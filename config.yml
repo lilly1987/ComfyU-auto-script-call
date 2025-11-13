@@ -4,7 +4,7 @@ base_dir: W:\ComfyUI_windows_portable  # 작업 디렉토리
 
 # --- 처리할 타입 리스트 ---
 CheckpointTypes: # Checkpoint 및 Lora 종류. 뒤의 숫자는 사용할 가중치. 키 추가시 재실행 필요. 가중치는 실시간 반영
-  IL: 2
+  IL: 10
   Pony: 1
 
 # --- 경로 설정 ---
@@ -23,7 +23,7 @@ CharLoop: [3, 3] # Char 반복 횟수. 한번 돌때마다 Lora 값이 바뀜
 queueLoop: [3, 3] # Queue 반복 횟수
 
 # --- char 적용 설정 ---
-noCharPer: 0.5 # Char 파일을 안쓸 확률. 안쓸경우 CharWeightPer 무시됨
+noCharPer: 0.125 # Char 파일을 안쓸 확률. 안쓸경우 CharWeightPer 무시됨
 noCharWildcard: # Char 파일을 안쓸 경우 Wildcard 설정
   positive:
     char: '/**/{__danbooru_female_character_my__|__danbooru_female_character_my_simple__|__hair/hairstyles-female__|__char_lora__},/**/'
@@ -39,7 +39,7 @@ noLoraWildcard: # Lora 파일을 안쓸 경우 Wildcard 설정
     noLora: ''
 
 # --- Weight 설정 ---
-CheckpointWeightPer: 0.5 # WeightCheckpoint.yml 파일을 쓸 확률
+CheckpointWeightPer: 0.75 # WeightCheckpoint.yml 파일을 쓸 확률
 CharWeightPer: 0.75 # char weight를 쓸 확률. 가중치는 WeightChar.yml 파일과 [dataPath]/[CheckpointType]\lora\*.yml파일의 weight 값을 씀
 CharWeightDefault: 100 # [dataPath]/[CheckpointType]/lora/*.Yml 에 weight 값이 없을 경우 기본값.
 CheckpointWeightDefault: 150 # [dataPath]/[CheckpointType]/checkpoint/*.Yml 에 weight 값이 없을 경우 기본값.
@@ -51,7 +51,7 @@ shuffleWildcard: # Wildcard를 섞을 여부. shuffleWildcardPrint이 True일 �
   false: 1
 
 # --- 이미지 저장 설정 ---
-noSaveImage1: false # SaveImage1 노드의 images 입력을 제거할지 여부
+noSaveImage1: true # SaveImage1 노드의 images 입력을 제거할지 여부
 
 # --- 콘솔 출력 설정 ---
 checkpointYmlPrint: false # [dataPath]/[CheckpointType]/Checkpoint/*.Yml 를 가져온 값 출력 여부

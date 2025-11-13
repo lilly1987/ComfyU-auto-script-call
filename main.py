@@ -710,7 +710,8 @@ class ComfyUIAutomation:
         
         if self.get_config('noSaveImage1', False):
             from utils.dict_utils import pop_nested
-            print('SaveImage1', pop_nested(self.workflow_api, 'SaveImage1', "inputs", 'images'))
+            # print('SaveImage1', pop_nested(self.workflow_api, 'SaveImage1', "inputs", 'images'))
+            pop_nested(self.workflow_api, 'SaveImage1', "inputs", 'images')
     
     def set_tive(self, num_name: str, dic: Dict, reset: bool = False):
         """태그를 설정합니다."""
