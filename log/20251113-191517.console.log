@@ -1,0 +1,38 @@
+[0m
+[19:15:17] CheckpointFiles IL 311                                                          main.py:161
+           CharFiles IL 4712                                                               main.py:174
+           LoraFiles IL 386                                                                main.py:187
+           WeightCheckpoint IL 311                                                         main.py:246
+           WeightLora IL 2                                                                 main.py:274
+           WeightLora (cleaned) IL 2                                                       main.py:282
+           WeightChar IL 4712                                                              main.py:266
+[19:15:19] CheckpointFiles Pony 64                                                         main.py:161
+           CharFiles Pony 4178                                                             main.py:174
+           LoraFiles Pony 583                                                              main.py:187
+           WeightCheckpoint Pony 64                                                        main.py:246
+[19:15:20] WeightLora Pony 2                                                               main.py:274
+           WeightLora (cleaned) Pony 2                                                     main.py:282
+           WeightChar Pony 4178                                                            main.py:266
+[19:15:23] XLSX 파일 생성 완료:                                                     json_to_xlsx.py:69
+           W:\ComfyUI_windows_portable\ComfyU-auto-script_data\count.xlsx                             
+           checkpoint_type IL                                                              main.py:387
+           CheckpointWeightPer 0.5 True                                                    main.py:391
+           no WeightCheckpoint                                                             main.py:401
+           checkpoint_name None                                                            main.py:412
+           checkpoint_path None                                                            main.py:414
+           noCharPer 0.5 0.13406509016959267 True                                          main.py:421
+           char_path None                                                                  main.py:430
+           noLoraPer 0.125 0.13828414684869517 False                                       main.py:466
+           lorasSet                                                                        main.py:536
+           set()                                                                                      
+           1, 1/6, 1/3, 1/3, 0:00:06.602407, None, noChar, IL                             main.py:1029
+[19:15:26] URL 오류: [WinError 10061] 대상 컴퓨터에서 연결을 거부했으므로 연결하지     comfy_api.py:49
+           못했습니다                                                                                 
+[19:15:28] URL 오류: [WinError 10061] 대상 컴퓨터에서 연결을 거부했으므로 연결하지     comfy_api.py:49
+           못했습니다                                                                                 
+[19:15:30] URL 오류: [WinError 10061] 대상 컴퓨터에서 연결을 거부했으므로 연결하지     comfy_api.py:49
+           못했습니다                                                                                 
+[19:15:32] KeyboardInterrupt                                                               main.py:959
+[19:15:33] XLSX 파일 생성 완료:                                                     json_to_xlsx.py:69
+           W:\ComfyUI_windows_portable\ComfyU-auto-script_data\count.xlsx                             
+            === finally ===                                                                main.py:970

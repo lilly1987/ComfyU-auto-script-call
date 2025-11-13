@@ -1,0 +1,15 @@
+2025-11-13 19:09:19,666 ERROR    main.py:run: 950 Exception
+Traceback (most recent call last):
+  File "W:\ComfyUI_windows_portable\ComfyU-auto-script-call\main.py", line 917, in run
+    self.init(db=True)
+    ~~~~~~~~~^^^^^^^^^
+  File "W:\ComfyUI_windows_portable\ComfyU-auto-script-call\main.py", line 136, in init
+    self._get_weight_lora(checkpoint_type, delete)
+    ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "W:\ComfyUI_windows_portable\ComfyU-auto-script-call\main.py", line 277, in _get_weight_lora
+    self._clean_weight_lora(checkpoint_type)
+    ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "W:\ComfyUI_windows_portable\ComfyU-auto-script-call\main.py", line 287, in _clean_weight_lora
+    for k1, v1 in list(weight_lora.items()):
+                       ^^^^^^^^^^^^^^^^^
+AttributeError: 'NoneType' object has no attribute 'items'
