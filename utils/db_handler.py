@@ -102,6 +102,54 @@ class DatabaseHandler:
         else:
             table.insert(new_data)
     
+    def get_char_counts(self, checkpoint_type: str) -> dict:
+        """
+        Char 사용 횟수를 가져옵니다.
+        
+        Args:
+            checkpoint_type: 체크포인트 타입
+        
+        Returns:
+            {char_name: count} 딕셔너리
+        """
+        if not self.db:
+            return {}
+        
+        char_table = self.db.table(f'{checkpoint_type}-Char')
+        char_counts = {}
+        
+        for doc in char_table.all():
+            char_name = doc.get('Char')
+            count = doc.get('count', 0)
+            if char_name:
+                char_counts[char_name] = count
+        
+        return char_counts
+    
+    def get_lora_counts(self, checkpoint_type: str) -> dict:
+        """
+        LoRA 사용 횟수를 가져옵니다.
+        
+        Args:
+            checkpoint_type: 체크포인트 타입
+        
+        Returns:
+            {lora_name: count} 딕셔너리
+        """
+        if not self.db:
+            return {}
+        
+        lora_table = self.db.table(f'{checkpoint_type}-Lora')
+        lora_counts = {}
+        
+        for doc in lora_table.all():
+            lora_name = doc.get('Lora')
+            count = doc.get('count', 0)
+            if lora_name:
+                lora_counts[lora_name] = count
+        
+        return lora_counts
+    
     def json_to_xlsx(self):
         """JSON 데이터를 XLSX로 변환합니다."""
         if not self.path:

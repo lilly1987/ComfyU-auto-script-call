@@ -454,6 +454,37 @@ class ComfyUIAutomation:
         weight_char = self.get_now('WeightChar', default={})
         
         if self.no_char:
+            # noCharPer가 true일 때 noCharGetDb 확률로 데이터베이스 기반 선택
+            no_char_get_db = self.get_config('noCharGetDb', 0.0)
+            no_char_get_db_result = random.random() < no_char_get_db
+            
+            if no_char_get_db_result and self.db:
+                # 데이터베이스에서 사용 횟수 가져오기
+                char_counts = self.db.get_char_counts(self.checkpoint_type)
+                no_char_get_db_weight_max = self.get_config('noCharGetDbWeightMax', 100)
+                no_char_get_db_weight_min = self.get_config('noCharGetDbWeightMin', 1)
+                
+                # 가중치 계산: min(noCharGetDbWeightMax - 사용횟수, noCharGetDbWeightMax)
+                # 사용 횟수가 적을수록 높은 가중치
+                db_weights = {}
+                for char_name in char_file_names:
+                    count = char_counts.get(char_name, 0)
+                    # 가중치 = min(noCharGetDbWeightMax - 사용횟수, noCharGetDbWeightMax)
+                    # 최소값은 noCharGetDbWeightMin 사용
+                    weight = max(no_char_get_db_weight_min, min(no_char_get_db_weight_max - count, no_char_get_db_weight_max))
+                    db_weights[char_name] = weight
+                
+                print.Value('DB weights (Char)', len(db_weights), dict(list(db_weights.items())[:5]))
+                
+                if db_weights:
+                    self.char_name = random_weight_count(db_weights)[0]
+                    print.Value('char_name (from DB)', self.char_name)
+                    self.char_path = self.get_now('CharFileDics', self.char_name)
+                    print.Value('char_path', self.char_path)
+                    self.no_char = False  # DB에서 선택했으므로 noChar가 아님
+                    return
+            
+            # 데이터베이스 기반 선택이 아니거나 실패한 경우
             self.char_name = 'noChar'
             char_file_lists = self.get_now('CharFileLists', default=[])
             self.char_path = char_file_lists[0] if char_file_lists else None
@@ -496,6 +527,41 @@ class ComfyUIAutomation:
         print.Value('noLoraPer', no_lora_per, r, self.no_lora)
         
         if self.no_lora:
+            # noLoraPer가 true일 때 noLoraGetDb 확률로 데이터베이스 기반 선택
+            no_lora_get_db = self.get_config('noLoraGetDb', 0.0)
+            no_lora_get_db_result = random.random() < no_lora_get_db
+            
+            if no_lora_get_db_result and self.db:
+                # 데이터베이스에서 사용 횟수 가져오기
+                lora_counts = self.db.get_lora_counts(self.checkpoint_type)
+                no_lora_get_db_weight_max = self.get_config('noLoraGetDbWeightMax', 100)
+                no_lora_get_db_weight_min = self.get_config('noLoraGetDbWeightMin', 1)
+                no_lora_get_db_cnt = self.get_config('noLoraGetDbCnt', [1, 1])
+                cnt = random_min_max(no_lora_get_db_cnt)
+                
+                lora_file_names = self.get_now('LoraFileNames', default=[])
+                
+                # 가중치 계산: min(noLoraGetDbWeightMax - 사용횟수, noLoraGetDbWeightMax)
+                # 사용 횟수가 적을수록 높은 가중치
+                db_weights = {}
+                for lora_name in lora_file_names:
+                    count = lora_counts.get(lora_name, 0)
+                    # 가중치 = min(noLoraGetDbWeightMax - 사용횟수, noLoraGetDbWeightMax)
+                    # 최소값은 noLoraGetDbWeightMin 사용
+                    weight = max(no_lora_get_db_weight_min, min(no_lora_get_db_weight_max - count, no_lora_get_db_weight_max))
+                    db_weights[lora_name] = weight
+                
+                print.Value('DB weights (LoRA)', len(db_weights), dict(list(db_weights.items())[:5]))
+                
+                if db_weights:
+                    # 가중치 기반으로 여러 개 선택
+                    selected_loras = random_weight_count(db_weights, count=min(cnt, len(db_weights)))
+                    self.loras_set = set(selected_loras)
+                    print.Value('lorasSet (from DB)', self.loras_set, f'count={len(selected_loras)}')
+                    self.no_lora = False  # DB에서 선택했으므로 noLora가 아님
+                    return
+            
+            # 데이터베이스 기반 선택이 아니거나 실패한 경우
             return
         
         weight_lora = self.get_now('WeightLora', default={})

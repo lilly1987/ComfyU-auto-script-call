@@ -23,7 +23,10 @@ CharLoop: [3, 3] # Char 반복 횟수. 한번 돌때마다 Lora 값이 바뀜
 queueLoop: [3, 3] # Queue 반복 횟수
 
 # --- char 적용 설정 ---
-noCharPer: 0.125 # Char 파일을 안쓸 확률. 안쓸경우 CharWeightPer 무시됨
+noCharPer: 0.25 # Char 파일을 안쓸 확률. 안쓸경우 CharWeightPer 무시됨
+noCharGetDb: 0.75 # noCharPer를 안쓸 경우 DatabaseHandler에서 참조할 확률
+noCharGetDbWeightMax: 100 # noCharPer를 안쓸 경우 최대 가중치
+noCharGetDbWeightMin: 1 # noCharPer를 안쓸 경우 최대 가중치
 noCharWildcard: # Char 파일을 안쓸 경우 Wildcard 설정
   positive:
     char: '/**/{__danbooru_female_character_my__|__danbooru_female_character_my_simple__|__hair/hairstyles-female__|__char_lora__},/**/'
@@ -31,7 +34,11 @@ noCharWildcard: # Char 파일을 안쓸 경우 Wildcard 설정
     char: ''
 
 # --- Lora 적용 설정 ---
-noLoraPer: 0.125 # Lora 파일을 안쓸 확률. 안쓸경우 LoraWeightPer 무시됨
+noLoraPer: 0.5 # Lora 파일을 안쓸 확률. 안쓸경우 LoraWeightPer 무시됨
+noLoraGetDb: 0.75 # noLoraPer를 안쓸 경우 DatabaseHandler에서 참조할 확률
+noLoraGetDbWeightMax: 100 # noLoraPer를 안쓸 경우 최대 가중치
+noLoraGetDbWeightMin: 1 # noLoraPer를 안쓸 경우 최대 가중치
+noLoraGetDbCnt: [3,6] # DatabaseHandler에서 가져가 쓸 갯수
 noLoraWildcard: # Lora 파일을 안쓸 경우 Wildcard 설정
   positive:
     noLora: '/**/__action__,/**/'
