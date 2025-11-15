@@ -28,7 +28,9 @@ except Exception:
     pass
 
 # 경로 설정
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+script_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(script_dir)
+sys.path.insert(0, parent_dir)
 
 from utils.config_loader import ConfigLoader
 from utils.yaml_handler import YAMLHandler
@@ -42,7 +44,8 @@ from utils.db_handler import DatabaseHandler
 from watchdog.events import FileSystemEvent
 
 # 설정 파일이 없으면 생성
-if not Path('config.yml').exists():
+config_path = Path(parent_dir) / 'config.yml'
+if not config_path.exists():
     from utils.data_init import create_data_files
     create_data_files()
 
