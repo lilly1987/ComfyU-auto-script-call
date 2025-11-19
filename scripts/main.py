@@ -529,24 +529,26 @@ class ComfyUIAutomation:
         self.tive_weight = {}
         self.loras_set = set()
         
-        no_lora_per = self.get_config('noLoraPer', 0.5)
-        r = random.random()
-        self.no_lora = no_lora_per > r
-        print.Value('noLoraPer', no_lora_per, r, self.no_lora)
+        # GetLoraKind 비중 기반 선택
+        get_lora_kind = self.get_config('GetLoraKind', {'Wildcard': 1, 'DB': 0, 'Weight': 1})
+        selected_kind = random_weight_count(get_lora_kind)[0]
+        print.Value('GetLoraKind selected', selected_kind)
         
-        if self.no_lora:
-            # noLoraPer가 true일 때 noLoraGetDb 확률로 데이터베이스 기반 선택
-            no_lora_get_db = self.get_config('noLoraGetDb', 0.0)
-            r = random.random()
-            no_lora_get_db_result = r < no_lora_get_db
-            print.Value('noLoraGetDb', no_lora_get_db, r, no_lora_get_db_result)
-            
-            if no_lora_get_db_result and self.db:
+        # Wildcard 방식: noLoraPer를 사용하여 LoRA를 사용할지 결정
+        if selected_kind == 'Wildcard':
+
+            print.Value('Wildcard method')
+
+            return            
+
+        # DB 방식: 데이터베이스 기반 선택
+        elif selected_kind == 'DB':
+            if self.db:
                 # 데이터베이스에서 사용 횟수 가져오기
                 lora_counts = self.db.get_lora_counts(self.checkpoint_type)
-                no_lora_get_db_weight_max = self.get_config('noLoraGetDbWeightMax', 100)
-                no_lora_get_db_weight_min = self.get_config('noLoraGetDbWeightMin', 1)
-                no_lora_get_db_cnt = self.get_config('noLoraGetDbCnt', [1, 1])
+                no_lora_get_db_weight_max = self.get_config('LoraDbWeightMax', 100)
+                no_lora_get_db_weight_min = self.get_config('LoraDbWeightMin', 1)
+                no_lora_get_db_cnt = self.get_config('LoraDbCnt', [1, 6])
                 cnt = random_min_max(no_lora_get_db_cnt)
                 
                 lora_file_names = self.get_now('LoraFileNames', default=[])
@@ -561,86 +563,87 @@ class ComfyUIAutomation:
                     weight = max(no_lora_get_db_weight_min, min(no_lora_get_db_weight_max - count, no_lora_get_db_weight_max))
                     db_weights[lora_name] = weight
                 
-                # print.Value('DB weights (LoRA)', len(db_weights), dict(list(db_weights.items())[:5]))
-                print.Value('DB weights (LoRA)', len(db_weights))
+                print.Value('DB method - DB weights (LoRA)', len(db_weights))
                 
                 if db_weights:
                     # 가중치 기반으로 여러 개 선택
                     selected_loras = random_weight_count(db_weights, count=min(cnt, len(db_weights)))
                     self.loras_set = set(selected_loras)
                     print.Value('lorasSet (from DB)', self.loras_set, f'count={len(selected_loras)}')
-                    self.no_lora = False  # DB에서 선택했으므로 noLora가 아님
                     return
             
-            # 데이터베이스 기반 선택이 아니거나 실패한 경우
+            # DB 사용 불가 시 LoRA 없이 반환
+            print.Warn('DB method selected but DB is not available')
             return
         
-        weight_lora = self.get_now('WeightLora', default={})
-        
-        for k1, v1 in weight_lora.items():
-            print.Value('LoraChange', k1, len(v1))
-            dic = v1.get('dic', {})
-            tive_weight_tmp = {}
-            loras_set_tmp = set()
+        # Weight 방식: Weight 파일 기반 선택
+        elif selected_kind == 'Weight':
+            weight_lora = self.get_now('WeightLora', default={})
             
-            # per 처리
-            per = v1.get('per', False)
-            if per:
-                per_max = v1.get('perMax', 0)
-                per_max = random_min_max(per_max)
-                per_cnt = 0
-                per_firsts = v1.get('perFirsts', False)
+            for k1, v1 in weight_lora.items():
+                print.Value('Weight method - LoraChange', k1, len(v1))
+                dic = v1.get('dic', {})
+                tive_weight_tmp = {}
+                loras_set_tmp = set()
                 
-                for k2, v2 in dic.items():
-                    if per_firsts and per_cnt >= per_max:
-                        print.Value('perCnt, perMax', per_cnt, per_max)
-                        break
+                # per 처리
+                per = v1.get('per', False)
+                if per:
+                    per_max = v1.get('perMax', 0)
+                    per_max = random_min_max(per_max)
+                    per_cnt = 0
+                    per_firsts = v1.get('perFirsts', False)
                     
-                    per_val = v2.get('per', 0)
-                    r = random.random()
-                    if per_val > r:
+                    for k2, v2 in dic.items():
+                        if per_firsts and per_cnt >= per_max:
+                            print.Value('perCnt, perMax', per_cnt, per_max)
+                            break
+                        
+                        per_val = v2.get('per', 0)
+                        r = random.random()
+                        if per_val > r:
+                            loras = v2.get('loras')
+                            lora = random_weight(loras)
+                            tive_weight_tmp[lora] = v2
+                            per_cnt += 1
+                
+                # weight 처리
+                weight = v1.get('weight', False)
+                if weight:
+                    weight_max = v1.get('weightMax', 0)
+                    weight_max = random_min_max(weight_max)
+                    loras_key_set_tmp = set(random_dict_weight(dic, 'weight', weight_max))
+                    print.Value('LoraChange weight', k1, loras_key_set_tmp)
+                    
+                    for k2 in loras_key_set_tmp:
+                        v2 = dic.get(k2)
                         loras = v2.get('loras')
                         lora = random_weight(loras)
                         tive_weight_tmp[lora] = v2
-                        per_cnt += 1
-            
-            # weight 처리
-            weight = v1.get('weight', False)
-            if weight:
-                weight_max = v1.get('weightMax', 0)
-                weight_max = random_min_max(weight_max)
-                loras_key_set_tmp = set(random_dict_weight(dic, 'weight', weight_max))
-                print.Value('LoraChange weight', k1, loras_key_set_tmp)
                 
-                for k2 in loras_key_set_tmp:
-                    v2 = dic.get(k2)
-                    loras = v2.get('loras')
-                    lora = random_weight(loras)
-                    tive_weight_tmp[lora] = v2
+                # total 처리
+                total = v1.get('total', False)
+                if total:
+                    total_max = v1.get('totalMax', 0)
+                    total_max = random_min_max(total_max)
+                    l = random_items_count(tive_weight_tmp, total_max)
+                    loras_set_tmp.update(l)
+                else:
+                    l = list(tive_weight_tmp.keys())
+                    loras_set_tmp.update(l)
+                
+                # tive_weight 업데이트
+                for k2 in loras_set_tmp:
+                    update_dict_key(self.tive_weight, tive_weight_tmp[k2], 'positive')
+                    update_dict_key(self.tive_weight, tive_weight_tmp[k2], 'negative')
+                
+                print.Value('lorasSetTmp', k1, loras_set_tmp)
+                self.loras_set = self.loras_set.union(loras_set_tmp)
             
-            # total 처리
-            total = v1.get('total', False)
-            if total:
-                total_max = v1.get('totalMax', 0)
-                total_max = random_min_max(total_max)
-                l = random_items_count(tive_weight_tmp, total_max)
-                loras_set_tmp.update(l)
-            else:
-                l = list(tive_weight_tmp.keys())
-                loras_set_tmp.update(l)
-            
-            # tive_weight 업데이트
-            for k2 in loras_set_tmp:
-                update_dict_key(self.tive_weight, tive_weight_tmp[k2], 'positive')
-                update_dict_key(self.tive_weight, tive_weight_tmp[k2], 'negative')
-            
-            print.Value('lorasSetTmp', k1, loras_set_tmp)
-            self.loras_set = self.loras_set.union(loras_set_tmp)
-        
-        if self.get_config("LoraChangePrint", False):
-            print.Config('positiveDics', self.positive_dics)
-            print.Config('negativeDics', self.negative_dics)
-        print.Value('lorasSet', self.loras_set)
+            if self.get_config("LoraChangePrint", False):
+                print.Config('positiveDics', self.positive_dics)
+                print.Config('negativeDics', self.negative_dics)
+            print.Value('lorasSet', self.loras_set)
     
     def get_workflow(self, node: str, key: str) -> Any:
         """워크플로우에서 값을 가져옵니다."""

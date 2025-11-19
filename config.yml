@@ -25,34 +25,46 @@ CharLoop: [3, 3] # Char 반복 횟수. 한번 돌때마다 Lora 값이 바뀜
 queueLoop: [2, 2] # Queue 반복 횟수
 
 # --- char 적용 설정 ---
-noCharPer: 0.25 # Char 파일을 안쓸 확률. 안쓸경우 CharWeightPer 무시됨
-noCharGetDb: 0.75 # noCharPer를 안쓸 경우 DatabaseHandler에서 참조할 확률
-noCharGetDbWeightMax: 100 # noCharPer를 안쓸 경우 최대 가중치
-noCharGetDbWeightMin: 1 # noCharPer를 안쓸 경우 최대 가중치
-noCharWildcard: # Char 파일을 안쓸 경우 Wildcard 설정
+GetCharKind:
+    Wildcard: 1
+    DB: 1
+    Weight: 1
+    Random: 1 # 파일 목록중에서 랜덤 선택
+
+CharDbWeightMax: 100 # noCharPer를 안쓸 경우 최대 가중치
+CharDbWeightMin: 1 # noCharPer를 안쓸 경우 최대 가중치
+
+CharWildcard: # Char 파일을 안쓸 경우 Wildcard 설정
   positive:
     char: '/**/{__danbooru_female_character_my__|__danbooru_female_character_my_simple__|__hair/hairstyles-female__|__char_lora__},/**/'
   negative:
     char: ''
 
 # --- Lora 적용 설정 ---
-noLoraPer: 0.5 # Lora 파일을 안쓸 확률. 안쓸경우 LoraWeightPer 무시됨
-noLoraWildcard: # Lora 파일을 안쓸 경우 Wildcard 설정
+GetLoraKind:
+    Wildcard: 1
+    DB: 1
+    Weight: 1
+    Random: 1 # 파일 목록중에서 랜덤 선택
+
+LoraWildcard: # GetLoraKind 에서 GetLoraKind일 경우
   positive:
-    noLora: '/**/__action__,/**/'
+    Wildcard: '/**/__action__,/**/'
   negative:
-    noLora: ''
-noLoraGetDb: 0.75 # noLoraPer를 안쓸 경우 DatabaseHandler에서 참조할 확률
-noLoraGetDbWeightMax: 100 # noLoraPer를 안쓸 경우 최대 가중치
-noLoraGetDbWeightMin: 1 # noLoraPer를 안쓸 경우 최대 가중치
-noLoraGetDbCnt: [1,6] # DatabaseHandler에서 가져가 쓸 갯수
+    Wildcard: ''
+
+LoraDbWeightMax: 100 # GetLoraKind 에서 DB일 경우 최대 가중치
+LoraDbWeightMin: 1 # GetLoraKind 에서 DB일 경우 최대 가중치
+LoraDbCnt: [1,6] # GetLoraKind 에서 DB일 경우 DatabaseHandler에서 가져가 쓸 갯수
+
+LoraRandomCnt: [1,6] # GetLoraKind 에서 Random일 경우 목록에서 가져가 쓸 갯수
+
 
 # --- Weight 설정 ---
 CheckpointWeightPer: 0.75 # WeightCheckpoint.yml 파일을 쓸 확률
 CharWeightPer: 0.75 # char weight를 쓸 확률. 가중치는 WeightChar.yml 파일과 [dataPath]/[CheckpointType]\lora\*.yml파일의 weight 값을 씀
 CharWeightDefault: 100 # [dataPath]/[CheckpointType]/lora/*.Yml 에 weight 값이 없을 경우 기본값.
 CheckpointWeightDefault: 150 # [dataPath]/[CheckpointType]/checkpoint/*.Yml 에 weight 값이 없을 경우 기본값.
-LoraWeightPer: 0.75 # lora weight를 쓸 확률. 가중치는 WeightLora.yml 파일과 [dataPath]/[CheckpointType]\lora\*.yml파일의 weight 값을 씀
 
 # --- 랜덤 설정 ---
 shuffleWildcard: # Wildcard를 섞을 여부. shuffleWildcardPrint이 True일 경우 섞기 전과 후를 출력함
