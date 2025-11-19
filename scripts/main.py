@@ -813,7 +813,7 @@ class ComfyUIAutomation:
         ff = (f"{self.checkpoint_type}/"
                f"{self.checkpoint_name}{tcp}/"
                f"{self.char_name}{tch}/"
-               f"{self.checkpoint_name}-{self.char_name}-"
+               f"{self.checkpoint_name}-{self.char_name}-{len(self.loras_set)}-"
                f"{time.strftime('%Y%m%d-%H%M%S')}-{self.total}")
         
         self.set_workflow('SaveImage1', 'filename_prefix', ff + "-1")
