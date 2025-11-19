@@ -537,7 +537,9 @@ class ComfyUIAutomation:
         if self.no_lora:
             # noLoraPer가 true일 때 noLoraGetDb 확률로 데이터베이스 기반 선택
             no_lora_get_db = self.get_config('noLoraGetDb', 0.0)
-            no_lora_get_db_result = random.random() < no_lora_get_db
+            r = random.random()
+            no_lora_get_db_result = r < no_lora_get_db
+            print.Value('noLoraGetDb', no_lora_get_db, r, no_lora_get_db_result)
             
             if no_lora_get_db_result and self.db:
                 # 데이터베이스에서 사용 횟수 가져오기
@@ -559,7 +561,8 @@ class ComfyUIAutomation:
                     weight = max(no_lora_get_db_weight_min, min(no_lora_get_db_weight_max - count, no_lora_get_db_weight_max))
                     db_weights[lora_name] = weight
                 
-                print.Value('DB weights (LoRA)', len(db_weights), dict(list(db_weights.items())[:5]))
+                # print.Value('DB weights (LoRA)', len(db_weights), dict(list(db_weights.items())[:5]))
+                print.Value('DB weights (LoRA)', len(db_weights))
                 
                 if db_weights:
                     # 가중치 기반으로 여러 개 선택
