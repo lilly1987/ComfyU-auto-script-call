@@ -513,6 +513,7 @@ class ComfyUIAutomation:
 
         # Weight: 기존 WeightChar 기반 선택
         if selected_kind == 'Weight':
+            self.no_char = False
             char_weight_per = self.get_config('CharWeightPer', 0.5)
             r = random.random()
             char_weight_per_result = char_weight_per > r
@@ -940,7 +941,7 @@ class ComfyUIAutomation:
             print.Value('model reference changed to CheckpointLoaderSimple')
         
         if self.no_lora:
-            self.tive_lora = self.get_config('noLoraWildcard', {})
+            self.tive_lora = self.get_config('LoraWildcard', {})
         else:
             self.tive_lora = {}
             for self.lora_tmp in self.loras_set:
@@ -1002,7 +1003,7 @@ class ComfyUIAutomation:
         if self.no_char:
             self.set_workflow('LoraLoader', 'strength_model', 0.0)
             self.set_workflow('LoraLoader', 'strength_clip', 0.0)
-            self.tive_char = self.get_config('noCharWildcard', {})
+            self.tive_char = self.get_config('CharWildcard', {})
         else:
             self.set_workflow_func_random('LoraLoader',
                                           ['strength_model', 'strength_clip', 'A', 'B'],
