@@ -404,6 +404,11 @@ class ComfyUIAutomation:
                     self.checkpoint_path = self.get_now('CheckpointFileDics', self.checkpoint_name)
                     print.Value('checkpoint_path', self.checkpoint_path)
                     return
+                else:
+                    print.Warn(f'no safetensorsStart: {safetensors_start}')
+            else:
+                print.Warn(f'no safetensorsStart')
+
         
         # 랜덤으로 Checkpoint 타입 선택
         self.checkpoint_type = random_weight_count(checkpoint_types)[0]
@@ -754,8 +759,17 @@ class ComfyUIAutomation:
         """Checkpoint YML을 워크플로우 API에 설정합니다."""
         dic_checkpoint_yml = self.get_now('dicCheckpointYml', self.checkpoint_name, default={})
         
+        # workflow_api에서 제외할 노드 (pass: true인 노드)
+        exclude_nodes = set()
+        for node_name, node_config in dic_checkpoint_yml.items():
+            if isinstance(node_config, dict):
+                for sub_node_name, sub_node_config in node_config.items():
+                    if isinstance(sub_node_config, dict) and sub_node_config.get('pass') is True:
+                        exclude_nodes.add(sub_node_name)
+                        print.Value('Exclude node (pass: true)', sub_node_name)
+        
         for k, v in dic_checkpoint_yml.items():
-            if k in self.workflow_api:
+            if k in self.workflow_api and k not in exclude_nodes:
                 inputs = get_nested(self.workflow_api, k, "inputs", default={})
                 l = get_type_list(inputs, (int, float), (bool,))
                 self.set_workflow_func_random3(k, l, self.set_dic_checkpoint_yml_to_workflow_api_sub, random_min_max)
@@ -876,6 +890,14 @@ class ComfyUIAutomation:
         lora_loader_next_key = 'LoraLoader'
         lora_loader_key = 'LoraLoader'
         
+        # ModelSamplingDiscrete가 pass: true인지 확인
+        dic_checkpoint_yml = self.get_now('dicCheckpointYml', self.checkpoint_name, default={})
+        model_sampling_discrete_pass = False
+        if isinstance(dic_checkpoint_yml.get('ModelSamplingDiscrete'), dict):
+            if dic_checkpoint_yml.get('ModelSamplingDiscrete', {}).get('pass') is True:
+                model_sampling_discrete_pass = True
+                print.Value('ModelSamplingDiscrete pass: true 감지')
+        
         model_sampling_discrete = self.get_workflow(lora_loader_next_key, 'model')
         if isinstance(model_sampling_discrete, list):
             model_sampling_discrete = model_sampling_discrete[0]
@@ -883,6 +905,11 @@ class ComfyUIAutomation:
         checkpoint_loader_simple = self.get_workflow(lora_loader_next_key, 'clip')
         if isinstance(checkpoint_loader_simple, list):
             checkpoint_loader_simple = checkpoint_loader_simple[0]
+        
+        # ModelSamplingDiscrete가 pass: true인 경우, model을 CheckpointLoaderSimple로 변경
+        if model_sampling_discrete_pass:
+            model_sampling_discrete = 'CheckpointLoaderSimple'
+            print.Value('model reference changed to CheckpointLoaderSimple')
         
         if self.no_lora:
             self.tive_lora = self.get_config('noLoraWildcard', {})

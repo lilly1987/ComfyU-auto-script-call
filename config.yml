@@ -16,6 +16,8 @@ safetensorsFile: '*.safetensors' # Checkpoint 및 Lora 파일 확장자.
 workflow_api: workflow_api.json # ComfyUI 로 보낼 workflow api 파일. dataPath+CheckpointTypes에 넣음
 url: http://127.0.0.1:8188/prompt # ComfyUI 로 보낼 url. ComfyUI가 실행중이어야 함
 
+# safetensorsStart: 'IL\bluearchive_01.safetensors'
+
 # --- 반복 설정 ---
 # CheckpointLoop * CharLoop * QueueLoop 횟수만큼 무한 반복
 CheckpointLoop: [9, 9] # Checkpoint 반복 횟수. 한번 돌때마다 Char 값이 바뀜
@@ -68,6 +70,7 @@ setupWildcardPrint: false # [dataPath]/[CheckpointType]/setupWildcard.yml 출력
 LoraChangeWarnPrint: false # LoraChange 과정중 경고 출력 여부
 LoraChangePrint: false # LoraChange 과정중 와일드카드 관련 출력 여부
 WorkflowPrint: false # ComfyUI로 보낼기 직전 workflow_api 출력 여부
+# WorkflowPrint: true # ComfyUI로 보낼기 직전 workflow_api 출력 여부
 shuffleWildcardPrint: false # shuffle Wildcard 전후 출력 여부
 setTivePrint: false # SetTive 처리 과정 출력 여부
 setWildcardDicPrint: false # 와일드 카드 관련 최종 처리 과정 출력 여부
@@ -96,8 +99,10 @@ excludeNode:
 
 # --- sleep 설정 ---
 sleep: [1, 1] # 루프 간 대기 시간 (초)
+# sleep: 111 # 루프 간 대기 시간 (초)
 
 # --- queue 설정 ---
 queue_prompt: true # ComfyUI에 프롬프트 전송 여부
+# queue_prompt: false # ComfyUI에 프롬프트 전송 여부
 queue_prompt_wait: true # 큐 대기 여부
 
