@@ -453,56 +453,71 @@ class ComfyUIAutomation:
     
     def char_change(self):
         """Char를 선택합니다."""
-        no_char_per = self.get_config('noCharPer', 0.5)
-        r = random.random()
-        self.no_char = no_char_per > r
-        print.Value('noCharPer', no_char_per, r, self.no_char)
-        
+        # GetCharKind 비중 기반 선택 (Wildcard / DB / Weight / Random)
+        get_char_kind = self.get_config('GetCharKind', {'Wildcard': 1, 'DB': 1, 'Weight': 1, 'Random': 1})
+        selected_kind = random_weight_count(get_char_kind)[0]
+        print.Value('GetCharKind selected', selected_kind)
+
         char_file_names = self.get_now('CharFileNames', default=[])
         weight_char = self.get_now('WeightChar', default={})
-        
-        if self.no_char:
-            # noCharPer가 true일 때 noCharGetDb 확률로 데이터베이스 기반 선택
-            no_char_get_db = self.get_config('noCharGetDb', 0.0)
-            no_char_get_db_result = random.random() < no_char_get_db
-            
-            if no_char_get_db_result and self.db:
-                # 데이터베이스에서 사용 횟수 가져오기
+
+        # Wildcard: Char 대신 와일드카드 사용
+        if selected_kind == 'Wildcard':
+            self.no_char = True
+            self.tive_char = self.get_config('CharWildcard', {})
+            print.Value('Char Wildcard used')
+            return
+
+        # DB: 데이터베이스 기반 선택
+        if selected_kind == 'DB':
+            if self.db:
                 char_counts = self.db.get_char_counts(self.checkpoint_type)
-                no_char_get_db_weight_max = self.get_config('noCharGetDbWeightMax', 100)
-                no_char_get_db_weight_min = self.get_config('noCharGetDbWeightMin', 1)
-                
-                # 가중치 계산: min(noCharGetDbWeightMax - 사용횟수, noCharGetDbWeightMax)
-                # 사용 횟수가 적을수록 높은 가중치
+                char_db_weight_max = self.get_config('CharDbWeightMax', 100)
+                char_db_weight_min = self.get_config('CharDbWeightMin', 1)
+
                 db_weights = {}
                 for char_name in char_file_names:
                     count = char_counts.get(char_name, 0)
-                    # 가중치 = min(noCharGetDbWeightMax - 사용횟수, noCharGetDbWeightMax)
-                    # 최소값은 noCharGetDbWeightMin 사용
-                    weight = max(no_char_get_db_weight_min, min(no_char_get_db_weight_max - count, no_char_get_db_weight_max))
+                    weight = max(char_db_weight_min, min(char_db_weight_max - count, char_db_weight_max))
                     db_weights[char_name] = weight
-                
-                print.Value('DB weights (Char)', len(db_weights), dict(list(db_weights.items())[:5]))
-                
+
+                print.Value('DB weights (Char)', len(db_weights))
+
                 if db_weights:
                     self.char_name = random_weight_count(db_weights)[0]
-                    print.Value('char_name (from DB)', self.char_name)
                     self.char_path = self.get_now('CharFileDics', self.char_name)
+                    self.no_char = False
+                    print.Value('char_name (from DB)', self.char_name)
                     print.Value('char_path', self.char_path)
-                    self.no_char = False  # DB에서 선택했으므로 noChar가 아님
                     return
-            
-            # 데이터베이스 기반 선택이 아니거나 실패한 경우
-            self.char_name = 'noChar'
-            char_file_lists = self.get_now('CharFileLists', default=[])
-            self.char_path = char_file_lists[0] if char_file_lists else None
-            print.Value('char_path', self.char_path)
-        else:
+
+            # DB 사용 불가 시 와일드카드로 처리
+            self.no_char = True
+            self.tive_char = self.get_config('CharWildcard', {})
+            print.Warn('DB method selected but DB is not available. Using CharWildcard')
+            return
+
+        # Random: 파일 목록에서 랜덤 선택
+        if selected_kind == 'Random':
+            if char_file_names:
+                self.char_name = random.choice(char_file_names)
+                self.char_path = self.get_now('CharFileDics', self.char_name)
+                self.no_char = False
+                print.Value('char_name (Random)', self.char_name)
+                print.Value('char_path', self.char_path)
+            else:
+                self.no_char = True
+                self.tive_char = self.get_config('CharWildcard', {})
+                print.Warn('No char files available. Using CharWildcard')
+            return
+
+        # Weight: 기존 WeightChar 기반 선택
+        if selected_kind == 'Weight':
             char_weight_per = self.get_config('CharWeightPer', 0.5)
             r = random.random()
             char_weight_per_result = char_weight_per > r
             print.Value('CharWeightPer', char_weight_per, r, char_weight_per_result)
-            
+
             if char_weight_per_result:
                 if len(weight_char) > 0:
                     self.char_name = random_weight_count(weight_char)[0]
@@ -512,14 +527,14 @@ class ComfyUIAutomation:
             else:
                 sub_char = [x for x in char_file_names if x not in weight_char.keys()]
                 print.Value('SubChar', len(sub_char))
-                
+
                 if len(sub_char) > 0:
                     self.char_name = random.choice(sub_char)
                     logger.warning(f'no in WeightChar: {self.char_name}')
                 else:
                     print.Warn('no SubChar')
                     self.char_name = random.choice(char_file_names) if char_file_names else None
-            
+
             print.Value('char_name', self.char_name)
             self.char_path = self.get_now('CharFileDics', self.char_name)
             print.Value('char_path', self.char_path)
@@ -528,52 +543,59 @@ class ComfyUIAutomation:
         """LoRA를 선택합니다."""
         self.tive_weight = {}
         self.loras_set = set()
-        
         # GetLoraKind 비중 기반 선택
-        get_lora_kind = self.get_config('GetLoraKind', {'Wildcard': 1, 'DB': 0, 'Weight': 1})
+        get_lora_kind = self.get_config('GetLoraKind', {'Wildcard': 1, 'DB': 1, 'Weight': 1, 'Random': 1})
         selected_kind = random_weight_count(get_lora_kind)[0]
         print.Value('GetLoraKind selected', selected_kind)
-        
-        # Wildcard 방식: noLoraPer를 사용하여 LoRA를 사용할지 결정
+
+        # Wildcard: LoRA 대신 와일드카드 사용
         if selected_kind == 'Wildcard':
-
-            print.Value('Wildcard method')
-
-            return            
+            self.no_lora = True
+            self.tive_lora = self.get_config('LoraWildcard', {})
+            print.Value('Lora Wildcard used')
+            return
 
         # DB 방식: 데이터베이스 기반 선택
-        elif selected_kind == 'DB':
+        if selected_kind == 'DB':
             if self.db:
                 # 데이터베이스에서 사용 횟수 가져오기
                 lora_counts = self.db.get_lora_counts(self.checkpoint_type)
-                no_lora_get_db_weight_max = self.get_config('LoraDbWeightMax', 100)
-                no_lora_get_db_weight_min = self.get_config('LoraDbWeightMin', 1)
-                no_lora_get_db_cnt = self.get_config('LoraDbCnt', [1, 6])
-                cnt = random_min_max(no_lora_get_db_cnt)
+                lora_db_weight_max = self.get_config('LoraDbWeightMax', 100)
+                lora_db_weight_min = self.get_config('LoraDbWeightMin', 1)
+                lora_db_cnt = self.get_config('LoraDbCnt', [1, 6])
+                cnt = random_min_max(lora_db_cnt)
                 
                 lora_file_names = self.get_now('LoraFileNames', default=[])
                 
-                # 가중치 계산: min(noLoraGetDbWeightMax - 사용횟수, noLoraGetDbWeightMax)
-                # 사용 횟수가 적을수록 높은 가중치
+                # 가중치 계산: min(lora_db_weight_max - 사용횟수, lora_db_weight_max)
                 db_weights = {}
                 for lora_name in lora_file_names:
                     count = lora_counts.get(lora_name, 0)
-                    # 가중치 = min(noLoraGetDbWeightMax - 사용횟수, noLoraGetDbWeightMax)
-                    # 최소값은 noLoraGetDbWeightMin 사용
-                    weight = max(no_lora_get_db_weight_min, min(no_lora_get_db_weight_max - count, no_lora_get_db_weight_max))
+                    weight = max(lora_db_weight_min, min(lora_db_weight_max - count, lora_db_weight_max))
                     db_weights[lora_name] = weight
                 
                 print.Value('DB method - DB weights (LoRA)', len(db_weights))
                 
                 if db_weights:
-                    # 가중치 기반으로 여러 개 선택
                     selected_loras = random_weight_count(db_weights, count=min(cnt, len(db_weights)))
                     self.loras_set = set(selected_loras)
                     print.Value('lorasSet (from DB)', self.loras_set, f'count={len(selected_loras)}')
                     return
             
-            # DB 사용 불가 시 LoRA 없이 반환
             print.Warn('DB method selected but DB is not available')
+            return
+
+        # Random 방식: 파일 목록에서 랜덤 선택
+        if selected_kind == 'Random':
+            lora_file_names = self.get_now('LoraFileNames', default=[])
+            if not lora_file_names:
+                print.Warn('No Lora files available for Random method')
+                return
+            cnt = random_min_max(self.get_config('LoraRandomCnt', [1, 6]))
+            cnt = min(cnt, len(lora_file_names))
+            selected = set(random.sample(list(lora_file_names), cnt))
+            self.loras_set = selected
+            print.Value('lorasSet (Random)', self.loras_set, f'count={len(selected)}')
             return
         
         # Weight 방식: Weight 파일 기반 선택
