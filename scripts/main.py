@@ -464,6 +464,8 @@ class ComfyUIAutomation:
         # Wildcard: Char 대신 와일드카드 사용
         if selected_kind == 'Wildcard':
             self.no_char = True
+            self.char_name = random.choice(char_file_names)
+            self.char_path = self.get_now('CharFileDics', self.char_name)
             self.char_name='Wildcard'
             self.tive_char = self.get_config('CharWildcard', {})
             print.Value('Char Wildcard used')
@@ -589,6 +591,8 @@ class ComfyUIAutomation:
                 if db_weights:
                     selected_loras = random_weight_count(db_weights, count=min(cnt, len(db_weights)))
                     self.loras_set = set(selected_loras)
+                    self.no_lora = False
+                    
                     # DB에서 선택된 로라들에 대한 positive/negative 업데이트
                     for lora_name in selected_loras:
                         lora_dic = self.get_now('dicLoraYml', lora_name, default={})
@@ -604,12 +608,14 @@ class ComfyUIAutomation:
         if selected_kind == 'Random':
             lora_file_names = self.get_now('LoraFileNames', default=[])
             if not lora_file_names:
+                self.no_lora = True
                 print.Warn('No Lora files available for Random method')
                 return
             cnt = random_min_max(self.get_config('LoraRandomCnt', [1, 6]))
             cnt = min(cnt, len(lora_file_names))
             selected = set(random.sample(list(lora_file_names), cnt))
             self.loras_set = selected
+            self.no_lora = False
             # Random에서 선택된 로라들에 대한 positive/negative 업데이트
             for lora_name in selected:
                 lora_dic = self.get_now('dicLoraYml', lora_name, default={})
@@ -685,6 +691,7 @@ class ComfyUIAutomation:
             if self.get_config("LoraChangePrint", False):
                 print.Config('positiveDics', self.positive_dics)
                 print.Config('negativeDics', self.negative_dics)
+            self.no_lora = False
             print.Value('lorasSet', self.loras_set)
     
     def get_workflow(self, node: str, key: str) -> Any:
