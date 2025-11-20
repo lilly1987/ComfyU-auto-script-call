@@ -28,7 +28,7 @@ queueLoop: [2, 2] # Queue 반복 횟수
 GetCharKind:
     Wildcard: 1
     DB: 1
-    Weight: 1
+    Weight: 2
     Random: 1 # 파일 목록중에서 랜덤 선택
 
 CharDbWeightMax: 100 # GetCharKind 에서 DB일 경우 최대 가중치
@@ -43,9 +43,9 @@ CharWildcard: # Char 파일을 안쓸 경우 Wildcard 설정
 # --- Lora 적용 설정 ---
 GetLoraKind:
     Wildcard: 1
-    DB: 1
-    Weight: 1
-    Random: 1 # 파일 목록중에서 랜덤 선택
+    DB: 2
+    Weight: 2
+    Random: 2 # 파일 목록중에서 랜덤 선택
 
 LoraWildcard: # GetLoraKind 에서 GetLoraKind일 경우
   positive:

@@ -464,6 +464,7 @@ class ComfyUIAutomation:
         # Wildcard: Char 대신 와일드카드 사용
         if selected_kind == 'Wildcard':
             self.no_char = True
+            self.char_name='Wildcard'
             self.tive_char = self.get_config('CharWildcard', {})
             print.Value('Char Wildcard used')
             return
@@ -487,6 +488,10 @@ class ComfyUIAutomation:
                     self.char_name = random_weight_count(db_weights)[0]
                     self.char_path = self.get_now('CharFileDics', self.char_name)
                     self.no_char = False
+                    # DB에서 선택된 char에 대한 positive/negative 업데이트
+                    char_dic = self.get_now('dicLoraYml', self.char_name, default={})
+                    update_dict_key(self.tive_char, char_dic, 'positive')
+                    update_dict_key(self.tive_char, char_dic, 'negative')
                     print.Value('char_name (from DB)', self.char_name)
                     print.Value('char_path', self.char_path)
                     return
@@ -503,6 +508,10 @@ class ComfyUIAutomation:
                 self.char_name = random.choice(char_file_names)
                 self.char_path = self.get_now('CharFileDics', self.char_name)
                 self.no_char = False
+                # Random에서 선택된 char에 대한 positive/negative 업데이트
+                char_dic = self.get_now('dicLoraYml', self.char_name, default={})
+                update_dict_key(self.tive_char, char_dic, 'positive')
+                update_dict_key(self.tive_char, char_dic, 'negative')
                 print.Value('char_name (Random)', self.char_name)
                 print.Value('char_path', self.char_path)
             else:
@@ -580,6 +589,11 @@ class ComfyUIAutomation:
                 if db_weights:
                     selected_loras = random_weight_count(db_weights, count=min(cnt, len(db_weights)))
                     self.loras_set = set(selected_loras)
+                    # DB에서 선택된 로라들에 대한 positive/negative 업데이트
+                    for lora_name in selected_loras:
+                        lora_dic = self.get_now('dicLoraYml', lora_name, default={})
+                        update_dict_key(self.tive_weight, lora_dic, 'positive')
+                        update_dict_key(self.tive_weight, lora_dic, 'negative')
                     print.Value('lorasSet (from DB)', self.loras_set, f'count={len(selected_loras)}')
                     return
             
@@ -596,6 +610,11 @@ class ComfyUIAutomation:
             cnt = min(cnt, len(lora_file_names))
             selected = set(random.sample(list(lora_file_names), cnt))
             self.loras_set = selected
+            # Random에서 선택된 로라들에 대한 positive/negative 업데이트
+            for lora_name in selected:
+                lora_dic = self.get_now('dicLoraYml', lora_name, default={})
+                update_dict_key(self.tive_weight, lora_dic, 'positive')
+                update_dict_key(self.tive_weight, lora_dic, 'negative')
             print.Value('lorasSet (Random)', self.loras_set, f'count={len(selected)}')
             return
         
@@ -1196,7 +1215,7 @@ class ComfyUIAutomation:
             # 큐에 추가
             # 정상적으로 보냈을 경우 계속 반복, 실패했을 경우만 종료
             if not self._queue():
-                return
+                pass
             
             time.sleep(random_min_max(self.get_config("sleep", 1)))
             
