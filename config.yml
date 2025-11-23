@@ -20,7 +20,7 @@ url: http://127.0.0.1:8188/prompt # ComfyUI 로 보낼 url. ComfyUI가 실행중
 
 # --- 반복 설정 ---
 # CheckpointLoop * CharLoop * QueueLoop 횟수만큼 무한 반복
-CheckpointLoop: [7, 7] # Checkpoint 반복 횟수. 한번 돌때마다 Char 값이 바뀜
+CheckpointLoop: [5, 5] # Checkpoint 반복 횟수. 한번 돌때마다 Char 값이 바뀜
 CharLoop: [3, 3] # Char 반복 횟수. 한번 돌때마다 Lora 값이 바뀜
 queueLoop: [2, 2] # Queue 반복 횟수
 
@@ -55,9 +55,9 @@ LoraWildcard: # GetLoraKind 에서 GetLoraKind일 경우
 
 LoraDbWeightMax: 100 # GetLoraKind 에서 DB일 경우 최대 가중치
 LoraDbWeightMin: 1 # GetLoraKind 에서 DB일 경우 최소 가중치
-LoraDbCnt: [1,6] # GetLoraKind 에서 DB일 경우 DatabaseHandler에서 가져가 쓸 갯수
+LoraDbCnt: [1,3] # GetLoraKind 에서 DB일 경우 DatabaseHandler에서 가져가 쓸 갯수
 
-LoraRandomCnt: [1,6] # GetLoraKind 에서 Random일 경우 목록에서 가져가 쓸 갯수
+LoraRandomCnt: [1,3] # GetLoraKind 에서 Random일 경우 목록에서 가져가 쓸 갯수
 
 
 # --- Weight 설정 ---
