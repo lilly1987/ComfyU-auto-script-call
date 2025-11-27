@@ -12,6 +12,7 @@ import fnmatch
 from pathlib import Path
 from typing import Dict, List, Set, Optional, Any
 from itertools import islice, zip_longest
+import threading
 
 # 모듈 자동 설치
 try:
@@ -102,6 +103,9 @@ class ComfyUIAutomation:
         
         # YAML 핸들러
         self.yaml_handler = YAMLHandler()
+        # 이벤트 디바운스/중복 처리용
+        self._recent_events: Dict[str, float] = {}
+        self._recent_events_lock = threading.Lock()
     
     def get_config(self, key: str, default: Any = None) -> Any:
         """설정 값을 가져옵니다."""
@@ -1103,6 +1107,59 @@ class ComfyUIAutomation:
                                'CheckpointFileDics',
                                'CheckpointFileLists',
                                'CheckpointFileNames')
+
+    def _wait_for_stable_file(self, path: Path, stable_time: float = 0.5, timeout: float = 5.0) -> bool:
+        """파일이 안정화(크기 변경 없음) 될 때까지 대기합니다.
+
+        Returns:
+            True: 안정화됨
+            False: 타임아웃 또는 파일 접근 불가
+        """
+        start = time.time()
+        last_size = -1
+        stable_since = None
+        while time.time() - start < timeout:
+            try:
+                size = path.stat().st_size
+            except Exception:
+                return False
+
+            if size == last_size:
+                if stable_since is None:
+                    stable_since = time.time()
+                elif time.time() - stable_since >= stable_time:
+                    return True
+            else:
+                last_size = size
+                stable_since = None
+
+            time.sleep(0.2)
+
+        return False
+
+    def _should_process_event(self, path: Path, event_type: str, debounce_seconds: float = 1.5) -> bool:
+        """최근에 처리한 동일 이벤트를 무시하기 위한 단순 디바운스.
+
+        Returns:
+            True: 처리해야 함
+            False: 무시
+        """
+        key = f"{event_type}:{str(path)}"
+        now = time.time()
+        with self._recent_events_lock:
+            last = self._recent_events.get(key)
+            # prune old entries
+            if len(self._recent_events) > 1000:
+                # remove entries older than 60s
+                cutoff = now - 60
+                keys_to_remove = [k for k, v in self._recent_events.items() if v < cutoff]
+                for k in keys_to_remove:
+                    self._recent_events.pop(k, None)
+
+            if last and now - last < debounce_seconds:
+                return False
+            self._recent_events[key] = now
+        return True
     
     def run(self):
         """메인 실행 루프"""
@@ -1356,6 +1413,19 @@ class ComfyUIAutomation:
                     
                     if len(rel.parts) == 2:
                         print.Value('CheckpointPath ok', event, rel)
+                        # 디바운스/안정화 처리
+                        if not self._should_process_event(path, event.event_type):
+                            if self.get_config('CallbackPrint', False):
+                                print.Value('Ignored duplicate event', path, event.event_type)
+                            return
+
+                        if event.event_type in ['created', 'modified'] and path.exists():
+                            stable = self._wait_for_stable_file(path)
+                            if not stable:
+                                if self.get_config('CallbackPrint', False):
+                                    print.Warn('File not stable, skipping', path)
+                                return
+
                         self.update_safetensors_checkpoint(path, r0, event.event_type)
                         return
                     else:
@@ -1390,10 +1460,36 @@ class ComfyUIAutomation:
                     if len(rel.parts) == 3:
                         if rel.parts[1] == 'char':
                             print.Value('LoraPath char ok', event)
+                            # 디바운스/안정화 처리
+                            if not self._should_process_event(path, event.event_type):
+                                if self.get_config('CallbackPrint', False):
+                                    print.Value('Ignored duplicate event', path, event.event_type)
+                                return
+
+                            if event.event_type in ['created', 'modified'] and path.exists():
+                                stable = self._wait_for_stable_file(path)
+                                if not stable:
+                                    if self.get_config('CallbackPrint', False):
+                                        print.Warn('File not stable, skipping', path)
+                                    return
+
                             self.update_safetensors_char(path, r0, event.event_type)
                             return
                         if rel.parts[1] == 'etc':
                             print.Value('LoraPath etc ok', event)
+                            # 디바운스/안정화 처리
+                            if not self._should_process_event(path, event.event_type):
+                                if self.get_config('CallbackPrint', False):
+                                    print.Value('Ignored duplicate event', path, event.event_type)
+                                return
+
+                            if event.event_type in ['created', 'modified'] and path.exists():
+                                stable = self._wait_for_stable_file(path)
+                                if not stable:
+                                    if self.get_config('CallbackPrint', False):
+                                        print.Warn('File not stable, skipping', path)
+                                    return
+
                             self.update_safetensors_etc(path, r0, event.event_type)
                             return
                     else:
