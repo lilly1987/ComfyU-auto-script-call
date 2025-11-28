@@ -51,7 +51,7 @@ class DatabaseHandler:
             char: 캐릭터 이름
             loras: LoRA 세트
         """
-        if not self.db:
+        if self.db is None:
             return
         
         loras_list = list(loras)
@@ -113,7 +113,7 @@ class DatabaseHandler:
 
     def _update_tags(self, checkpoint_type: str, tags: Optional[Iterable[str]]):
         """태그 사용 통계를 업데이트합니다."""
-        if not self.db or not tags:
+        if self.db is None or not tags:
             return
 
         tag_list: List[str] = []
@@ -128,7 +128,7 @@ class DatabaseHandler:
             return
 
         scoped_table = self.db.table(f'{checkpoint_type}-Tag')
-        global_table = self.db.table('TagUsage')
+        global_table = self.db.table('Tag')
 
         for tag_name in tag_list:
             self._update(
@@ -152,7 +152,7 @@ class DatabaseHandler:
         Returns:
             {char_name: count} 딕셔너리
         """
-        if not self.db:
+        if self.db is None:
             return {}
         
         char_table = self.db.table(f'{checkpoint_type}-Char')
@@ -176,7 +176,7 @@ class DatabaseHandler:
         Returns:
             {lora_name: count} 딕셔너리
         """
-        if not self.db:
+        if self.db is None:
             return {}
         
         lora_table = self.db.table(f'{checkpoint_type}-Lora')
@@ -200,4 +200,9 @@ class DatabaseHandler:
             json_to_xlsx(self.path)
         except Exception as e:
             print.exception(show_locals=True)
+
+    def close(self):
+        """데이터베이스 연결을 종료합니다."""
+        if self.db is not None:
+            self.db.close()
 

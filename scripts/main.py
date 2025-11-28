@@ -1294,9 +1294,11 @@ class ComfyUIAutomation:
             print.exception(show_locals=True)
         finally:
             try:
+                self.db.close()
                 self.db.json_to_xlsx()
             except Exception as e:
                 print.exception(show_locals=True)
+            
             print.save_html()
             print.Info(' === finally === ')
     
