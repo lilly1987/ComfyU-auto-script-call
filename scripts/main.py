@@ -196,6 +196,28 @@ class ComfyUIAutomation:
         set_nested(self.type_dics, file_names, checkpoint_type, 'LoraFileNames')
         
         print.Value('LoraFiles', checkpoint_type, len(file_names))
+
+    def _cycle_sample(self, pool_key: str, source_items: List[str], count: int = 1) -> List[str]:
+        """Cycle through source_items so every item is used once before repeating."""
+        if not source_items or count <= 0:
+            return []
+        
+        pool = list(self.get_now(pool_key, default=[]))
+        if not pool:
+            pool = list(source_items)
+        
+        selected: List[str] = []
+        while count > 0:
+            if not pool:
+                pool = list(source_items)
+                if not pool:
+                    break
+            idx = random.randrange(len(pool))
+            selected.append(pool.pop(idx))
+            count -= 1
+        print.Value('pool',pool_key, len(pool))
+        self.set_now(pool, pool_key)
+        return selected
     
     def _get_setup_wildcard(self, checkpoint_type: str = None):
         """setupWildcard.yml을 가져옵니다."""
@@ -458,7 +480,7 @@ class ComfyUIAutomation:
     def char_change(self):
         """Char를 선택합니다."""
         # GetCharKind 비중 기반 선택 (Wildcard / DB / Weight / Random)
-        get_char_kind = self.get_config('GetCharKind', {'Wildcard': 1, 'DB': 1, 'Weight': 1, 'Random': 1})
+        get_char_kind = self.get_config('GetCharKind', {'Wildcard': 1, 'DB': 1, 'Weight': 1, 'Random': 1, 'Cycle': 1})
         selected_kind = random_weight_count(get_char_kind)[0]
         print.Value('GetCharKind selected', selected_kind)
 
@@ -526,6 +548,25 @@ class ComfyUIAutomation:
                 print.Warn('No char files available. Using CharWildcard')
             return
 
+        # Cycle: 파일 목록을 순환하며 선택
+        if selected_kind == 'Cycle':
+            char_file_names = self.get_now('CharFileNames', default=[])
+            selected_chars = self._cycle_sample('CharCyclePool', char_file_names, 1)
+            if selected_chars:
+                self.char_name = selected_chars[0]
+                self.char_path = self.get_now('CharFileDics', self.char_name)
+                self.no_char = False
+                char_dic = self.get_now('dicLoraYml', self.char_name, default={})
+                update_dict_key(self.tive_char, char_dic, 'positive')
+                update_dict_key(self.tive_char, char_dic, 'negative')
+                print.Value('char_name (Cycle)', self.char_name)
+                print.Value('char_path', self.char_path)
+            else:
+                self.no_char = True
+                self.tive_char = self.get_config('CharWildcard', {})
+                print.Warn('No char files available for Cycle method. Using CharWildcard')
+            return
+
         # Weight: 기존 WeightChar 기반 선택
         if selected_kind == 'Weight':
             self.no_char = False
@@ -560,7 +601,7 @@ class ComfyUIAutomation:
         self.tive_weight = {}
         self.loras_set = set()
         # GetLoraKind 비중 기반 선택
-        get_lora_kind = self.get_config('GetLoraKind', {'Wildcard': 1, 'DB': 1, 'Weight': 1, 'Random': 1})
+        get_lora_kind = self.get_config('GetLoraKind', {'Wildcard': 1, 'DB': 1, 'Weight': 1, 'Random': 1, 'Cycle': 1})
         selected_kind = random_weight_count(get_lora_kind)[0]
         print.Value('GetLoraKind selected', selected_kind)
 
@@ -626,6 +667,28 @@ class ComfyUIAutomation:
                 update_dict_key(self.tive_weight, lora_dic, 'positive')
                 update_dict_key(self.tive_weight, lora_dic, 'negative')
             print.Value('lorasSet (Random)', self.loras_set, f'count={len(selected)}')
+            return
+
+        # Cycle 방식: 전체 목록을 순환하며 선택
+        if selected_kind == 'Cycle':
+            lora_file_names = self.get_now('LoraFileNames', default=[])
+            if not lora_file_names:
+                self.no_lora = True
+                print.Warn('No Lora files available for Cycle method')
+                return
+            cnt = random_min_max(self.get_config('LoraRandomCnt', [1, 6]))
+            selected_list = self._cycle_sample('LoraCyclePool', lora_file_names, cnt)
+            if not selected_list:
+                self.no_lora = True
+                print.Warn('Cycle method could not select any Lora')
+                return
+            self.loras_set = set(selected_list)
+            self.no_lora = False
+            for lora_name in selected_list:
+                lora_dic = self.get_now('dicLoraYml', lora_name, default={})
+                update_dict_key(self.tive_weight, lora_dic, 'positive')
+                update_dict_key(self.tive_weight, lora_dic, 'negative')
+            print.Value('lorasSet (Cycle)', self.loras_set, f'count={len(selected_list)}')
             return
         
         # Weight 방식: Weight 파일 기반 선택
