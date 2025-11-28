@@ -3,7 +3,7 @@
 데이터베이스 핸들러
 """
 from pathlib import Path
-from typing import Set, Optional
+from typing import Set, Optional, Iterable, List
 from tinydb import TinyDB, Query
 from tinydb.table import Table
 from tinydb.storages import JSONStorage
@@ -34,7 +34,14 @@ class DatabaseHandler:
         self.path = Path(data_path) / 'count.db'
         self.db = TinyDB(self.path, storage=UTF8JSONStorage)
     
-    def update(self, checkpoint_type: str, checkpoint: str, char: str, loras: Set[str]):
+    def update(
+        self,
+        checkpoint_type: str,
+        checkpoint: str,
+        char: str,
+        loras: Set[str],
+        tags: Optional[Iterable[str]] = None,
+    ):
         """
         데이터베이스를 업데이트합니다.
         
@@ -85,6 +92,8 @@ class DatabaseHandler:
                 'count': 1
             }
         )
+
+        self._update_tags(checkpoint_type, tags)
     
     def _update(self, table: Table, condition, new_data: dict):
         """
@@ -101,6 +110,37 @@ class DatabaseHandler:
             table.update({'count': new_count}, doc_ids=[result.doc_id])
         else:
             table.insert(new_data)
+
+    def _update_tags(self, checkpoint_type: str, tags: Optional[Iterable[str]]):
+        """태그 사용 통계를 업데이트합니다."""
+        if not self.db or not tags:
+            return
+
+        tag_list: List[str] = []
+        for tag in tags:
+            if not isinstance(tag, str):
+                continue
+            normalized = tag.strip()
+            if normalized:
+                tag_list.append(normalized)
+
+        if not tag_list:
+            return
+
+        scoped_table = self.db.table(f'{checkpoint_type}-Tag')
+        global_table = self.db.table('TagUsage')
+
+        for tag_name in tag_list:
+            self._update(
+                scoped_table,
+                self.query.Tag == tag_name,
+                {'Tag': tag_name, 'count': 1}
+            )
+            self._update(
+                global_table,
+                self.query.Tag == tag_name,
+                {'Tag': tag_name, 'count': 1}
+            )
     
     def get_char_counts(self, checkpoint_type: str) -> dict:
         """

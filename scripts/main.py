@@ -218,6 +218,35 @@ class ComfyUIAutomation:
         print.Value('pool',pool_key, len(pool))
         self.set_now(pool, pool_key)
         return selected
+
+    def _collect_lora_tags(self) -> List[str]:
+        """현재 선택된 LoRA의 태그를 모읍니다."""
+        if self.no_lora or not self.loras_set:
+            return []
+
+        tags: List[str] = []
+        dic_lora_yml = self.get_now('dicLoraYml', default={})
+
+        for lora_name in self.loras_set:
+            entry = dic_lora_yml.get(lora_name)
+            if not isinstance(entry, dict):
+                continue
+
+            tag_field = entry.get('tag')
+            if isinstance(tag_field, list):
+                print.Value('tag', lora_name, len(tag_field), tag_field[:3])
+                for tag in tag_field:
+                    if isinstance(tag, str):
+                        cleaned = tag.strip()
+                        if cleaned:
+                            tags.append(cleaned)
+            elif isinstance(tag_field, str):
+                print.Value('tag', lora_name, tag_field)
+                cleaned = tag_field.strip()
+                if cleaned:
+                    tags.append(cleaned)
+
+        return tags
     
     def _get_setup_wildcard(self, checkpoint_type: str = None):
         """setupWildcard.yml을 가져옵니다."""
@@ -1337,7 +1366,14 @@ class ComfyUIAutomation:
                   f"{self.char_name}, "
                   f"{self.checkpoint_type}")
             
-            self.db.update(self.checkpoint_type, self.checkpoint_name, self.char_name, self.loras_set)
+            lora_tags = self._collect_lora_tags()
+            self.db.update(
+                self.checkpoint_type,
+                self.checkpoint_name,
+                self.char_name,
+                self.loras_set,
+                tags=lora_tags,
+            )
             
             # 큐에 추가
             # 정상적으로 보냈을 경우 계속 반복, 실패했을 경우만 종료

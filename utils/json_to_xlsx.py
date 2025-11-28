@@ -2,10 +2,13 @@
 """
 JSON to XLSX 변환 유틸리티
 """
+import re
 import pandas as pd
 from pathlib import Path
 from tinydb import TinyDB
 from tinydb.storages import JSONStorage
+from openpyxl.worksheet.table import Table, TableStyleInfo
+from openpyxl.utils import get_column_letter
 
 from .print_log import print
 
@@ -15,6 +18,16 @@ class UTF8JSONStorage(JSONStorage):
     
     def __init__(self, path, **kwargs):
         super().__init__(path, encoding='utf-8', **kwargs)
+
+
+def _make_table_name(base: str, index: int) -> str:
+    """Excel 테이블 DisplayName을 생성합니다."""
+    safe = re.sub(r'[^0-9A-Za-z_]', '_', base)
+    if not safe or safe[0].isdigit():
+        safe = f"tbl_{safe}"
+    # Excel 테이블 이름은 31자 제한 권장
+    safe = safe[:25]
+    return f"{safe}_{index}"
 
 
 def json_to_xlsx(db_path: Path):
@@ -41,7 +54,7 @@ def json_to_xlsx(db_path: Path):
     
     try:
         with pd.ExcelWriter(new_file, engine='openpyxl') as writer:
-            for table_name in table_names:
+            for idx, table_name in enumerate(table_names):
                 table = db.table(table_name)
                 data = table.all()
                 
@@ -52,19 +65,40 @@ def json_to_xlsx(db_path: Path):
                             row[col] = ', '.join(map(str, value))
                 
                 df = pd.DataFrame(data)
+
+                if 'count' in df.columns:
+                    df['count'] = pd.to_numeric(df['count'], errors='coerce')
+                    df = df.sort_values(by='count', ascending=False, na_position='last')
                 sheet_name = str(table_name)[:31]  # Excel 시트 이름 제한
                 df.to_excel(writer, sheet_name=sheet_name, index=False)
-                
-                # 열 너비 자동 조정
-                for i, col in enumerate(df.columns):
-                    max_len = max(
-                        df[col].astype(str).map(len).max(),
-                        len(str(col))
+                worksheet = writer.sheets[sheet_name]
+
+                # 표 스타일 적용 (데이터가 있을 때만)
+                if not df.empty:
+                    last_col = get_column_letter(len(df.columns))
+                    last_row = len(df.index) + 1  # 헤더 포함
+                    table_ref = f"A1:{last_col}{last_row}"
+                    display_name = _make_table_name(table_name, idx)
+                    xl_table = Table(displayName=display_name, ref=table_ref)
+                    style = TableStyleInfo(
+                        name="TableStyleMedium9",
+                        showFirstColumn=False,
+                        showLastColumn=False,
+                        showRowStripes=True,
+                        showColumnStripes=False,
                     )
+                    xl_table.tableStyleInfo = style
+                    worksheet.add_table(xl_table)
+
+                # 열 너비 자동 조정
+                for col_idx, col in enumerate(df.columns, start=1):
+                    col_letter = get_column_letter(col_idx)
+                    series_max = df[col].astype(str).map(len).max()
+                    if pd.isna(series_max):
+                        series_max = 0
+                    max_len = max(series_max, len(str(col)))
                     max_len = min(max_len, 200)
-                    writer.sheets[sheet_name].column_dimensions[
-                        chr(65 + i)
-                    ].width = max_len + 2
+                    worksheet.column_dimensions[col_letter].width = max_len + 2
         
         print.Info("XLSX 파일 생성 완료:", new_file)
     except Exception as e:
