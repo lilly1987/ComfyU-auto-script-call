@@ -106,10 +106,6 @@ class ComfyUIAutomation:
         # 이벤트 디바운스/중복 처리용
         self._recent_events: Dict[str, float] = {}
         self._recent_events_lock = threading.Lock()
-        
-        # 와일드카드 데이터
-        self._char_wildcard: Dict = {}
-        self._lora_wildcard: Dict = {}
     
     def get_config(self, key: str, default: Any = None) -> Any:
         """설정 값을 가져옵니다."""
@@ -124,63 +120,38 @@ class ComfyUIAutomation:
         return set_nested(self.type_dics, value, self.checkpoint_type, *keys)
     
     def _load_wildcards(self):
-        """와일드카드 데이터를 우선순위에 따라 로드합니다.
-        1순위: {dataPath}/{checkpoint_type}/setupWildcard.yml의 CharWildcard/LoraWildcard
-        2순위: {dataPath}/setupWildcard.yml의 CharWildcard/LoraWildcard
-        3순위: config.yml의 CharWildcard/LoraWildcard
+        """각 checkpoint_type의 setupWildcard.yml에서 CharWildcard/LoraWildcard를 로드합니다.
+        우선순위: {dataPath}/{checkpoint_type}/setupWildcard.yml > {dataPath}/setupWildcard.yml > config.yml
         """
         data_path = Path(self.get_config('dataPath'))
         
-        # checkpoint_type별로 처리 (IL을 1순위로 사용)
-        # 또는 첫째 checkpoint_type 사용
-        # priority_type = None
-        # for ct in self.checkpoint_types:
-        #     if ct == 'IL':
-        #         priority_type = ct
-        #         break
-        # if not priority_type and self.checkpoint_types:
-        #     priority_type = self.checkpoint_types[0]
-        
-        # if priority_type:
-            # 1순위: {dataPath}/{checkpoint_type}/setupWildcard.yml
-        type_setup_path = data_path / self.checkpoint_type / 'setupWildcard.yml'
-        if type_setup_path.exists():
-            type_setup = self.yaml_handler.load_simple(str(type_setup_path)) or {}
-            self._char_wildcard = type_setup.get('CharWildcard', {})
-            self._lora_wildcard = type_setup.get('LoraWildcard', {})
-        else:
-            print.Warn(f'No setupWildcard.yml for type: {self.checkpoint_type}')
-        
-        if self._char_wildcard and self._lora_wildcard:
-            return
-        
-        # 2순위: {dataPath}/setupWildcard.yml
-        base_setup_path = data_path / 'setupWildcard.yml'
-        if base_setup_path.exists():
-            base_setup = self.yaml_handler.load_simple(str(base_setup_path)) or {}
-            if not self._char_wildcard:
-                self._char_wildcard = base_setup.get('CharWildcard', {})
-            if not self._lora_wildcard:
-                self._lora_wildcard = base_setup.get('LoraWildcard', {})
-        else:
-            print.Warn('No base setupWildcard.yml')
-
-        if self._char_wildcard and self._lora_wildcard:
-            return
-        
-        # 3순위: config.yml
-        if not self._char_wildcard:
-            self._char_wildcard = self.get_config('CharWildcard', {})
-        if not self._lora_wildcard:
-            self._lora_wildcard = self.get_config('LoraWildcard', {})
+        for checkpoint_type in self.checkpoint_types:
+            # 기본값: config.yml에서 로드
+            char_wildcard = self.get_config('CharWildcard', {})
+            lora_wildcard = self.get_config('LoraWildcard', {})
+            
+            # setupWildcard.yml 로드 (base + type-specific)
+            setup_wildcard = self.yaml_handler.load_simple(str(data_path / 'setupWildcard.yml')) or {}
+            type_wildcard = self.yaml_handler.load_simple(str(data_path / checkpoint_type / 'setupWildcard.yml')) or {}
+            
+            # type-specific이 base를 덮어쓴다
+            update_dict(setup_wildcard, type_wildcard)
+            
+            # CharWildcard, LoraWildcard 개별적으로 확인
+            if setup_wildcard.get('CharWildcard'):
+                char_wildcard = setup_wildcard['CharWildcard']
+            
+            if setup_wildcard.get('LoraWildcard'):
+                lora_wildcard = setup_wildcard['LoraWildcard']
+            
+            # type_dics에 저장
+            set_nested(self.type_dics, char_wildcard, checkpoint_type, 'CharWildcard')
+            set_nested(self.type_dics, lora_wildcard, checkpoint_type, 'LoraWildcard')
     
     def init(self, delete: bool = True, db: bool = False):
         """초기화합니다."""
         if db:
             self.db.init(self.get_config('dataPath'))
-        
-        # 와일드카드 로드 (모든 타입에 공통)
-        self._load_wildcards()
         
         data_path = Path(self.get_config('dataPath'))
         
@@ -193,6 +164,7 @@ class ComfyUIAutomation:
             self._get_safetensors_etc(checkpoint_type)
             
             # 설정 파일 가져오기
+            self._load_wildcards()
             self._get_setup_wildcard(checkpoint_type)
             self._get_setup_workflow(checkpoint_type)
             
@@ -580,7 +552,7 @@ class ComfyUIAutomation:
             self.char_name = random.choice(char_file_names)
             self.char_path = self.get_now('CharFileDics', self.char_name)
             self.char_name='Wildcard'
-            self.tive_char = self._char_wildcard
+            self.tive_char = self.get_now('CharWildcard', {})
             print.Value('Char Wildcard used')
             return
 
@@ -613,7 +585,7 @@ class ComfyUIAutomation:
 
             # DB 사용 불가 시 와일드카드로 처리
             self.no_char = True
-            self.tive_char = self._char_wildcard
+            self.tive_char = self.get_now('CharWildcard', {})
             print.Warn('DB method selected but DB is not available. Using CharWildcard')
             return
 
@@ -631,7 +603,7 @@ class ComfyUIAutomation:
                 print.Value('char_path', self.char_path)
             else:
                 self.no_char = True
-                self.tive_char = self._char_wildcard
+                self.tive_char = self.get_now('CharWildcard', {})
                 print.Warn('No char files available. Using CharWildcard')
             return
 
@@ -650,7 +622,7 @@ class ComfyUIAutomation:
                 print.Value('char_path', self.char_path)
             else:
                 self.no_char = True
-                self.tive_char = self._char_wildcard
+                self.tive_char = self.get_now('CharWildcard', {})
                 print.Warn('No char files available for Cycle method. Using CharWildcard')
             return
 
@@ -695,7 +667,7 @@ class ComfyUIAutomation:
         # Wildcard: LoRA 대신 와일드카드 사용
         if selected_kind == 'Wildcard':
             self.no_lora = True
-            self.tive_lora = self._lora_wildcard
+            self.tive_lora = self.get_now('LoraWildcard', {})
             print.Value('Lora Wildcard used')
             return
 
@@ -1121,7 +1093,7 @@ class ComfyUIAutomation:
             print.Value('model reference changed to CheckpointLoaderSimple')
         
         if self.no_lora:
-            self.tive_lora = self._lora_wildcard
+            self.tive_lora = self.get_now('LoraWildcard', {})
         else:
             self.tive_lora = {}
             for self.lora_tmp in self.loras_set:
@@ -1183,7 +1155,7 @@ class ComfyUIAutomation:
         if self.no_char:
             self.set_workflow('LoraLoader', 'strength_model', 0.0)
             self.set_workflow('LoraLoader', 'strength_clip', 0.0)
-            self.tive_char = self._char_wildcard
+            self.tive_char = self.get_now('CharWildcard', {})
         else:
             self.set_workflow_func_random('LoraLoader',
                                           ['strength_model', 'strength_clip', 'A', 'B'],
