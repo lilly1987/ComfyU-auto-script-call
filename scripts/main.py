@@ -552,7 +552,7 @@ class ComfyUIAutomation:
             self.char_name = random.choice(char_file_names)
             self.char_path = self.get_now('CharFileDics', self.char_name)
             self.char_name='Wildcard'
-            self.tive_char = self.get_now('CharWildcard', {})
+            self.tive_char = self.get_now('CharWildcard', default={})
             print.Value('Char Wildcard used')
             return
 
@@ -585,7 +585,7 @@ class ComfyUIAutomation:
 
             # DB 사용 불가 시 와일드카드로 처리
             self.no_char = True
-            self.tive_char = self.get_now('CharWildcard', {})
+            self.tive_char = self.get_now('CharWildcard',default= {})
             print.Warn('DB method selected but DB is not available. Using CharWildcard')
             return
 
@@ -603,7 +603,7 @@ class ComfyUIAutomation:
                 print.Value('char_path', self.char_path)
             else:
                 self.no_char = True
-                self.tive_char = self.get_now('CharWildcard', {})
+                self.tive_char = self.get_now('CharWildcard',default= {})
                 print.Warn('No char files available. Using CharWildcard')
             return
 
@@ -622,7 +622,7 @@ class ComfyUIAutomation:
                 print.Value('char_path', self.char_path)
             else:
                 self.no_char = True
-                self.tive_char = self.get_now('CharWildcard', {})
+                self.tive_char = self.get_now('CharWildcard',default= {})
                 print.Warn('No char files available for Cycle method. Using CharWildcard')
             return
 
@@ -667,7 +667,7 @@ class ComfyUIAutomation:
         # Wildcard: LoRA 대신 와일드카드 사용
         if selected_kind == 'Wildcard':
             self.no_lora = True
-            self.tive_lora = self.get_now('LoraWildcard', {})
+            self.tive_lora = self.get_now('LoraWildcard',default= {})
             print.Value('Lora Wildcard used')
             return
 
@@ -1093,7 +1093,7 @@ class ComfyUIAutomation:
             print.Value('model reference changed to CheckpointLoaderSimple')
         
         if self.no_lora:
-            self.tive_lora = self.get_now('LoraWildcard', {})
+            self.tive_lora = self.get_now('LoraWildcard', default={})
         else:
             self.tive_lora = {}
             for self.lora_tmp in self.loras_set:
@@ -1155,7 +1155,7 @@ class ComfyUIAutomation:
         if self.no_char:
             self.set_workflow('LoraLoader', 'strength_model', 0.0)
             self.set_workflow('LoraLoader', 'strength_clip', 0.0)
-            self.tive_char = self.get_now('CharWildcard', {})
+            self.tive_char = self.get_now('CharWildcard',default= {})
         else:
             self.set_workflow_func_random('LoraLoader',
                                           ['strength_model', 'strength_clip', 'A', 'B'],
