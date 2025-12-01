@@ -28,9 +28,9 @@ queueLoop: [2, 2] # Queue 반복 횟수
 GetCharKind:
     Wildcard: 1
     DB: 1
-    Weight: 1
+    Weight: 1 # {type}/lora/*.yml , {type}/WeightChar.yml 순으로 찿아서 참조
     Random: 1 # 파일 목록중에서 랜덤 선택
-    Cycle: 9
+    Cycle: 1
 
 CharDbWeightMax: 100 # GetCharKind 에서 DB일 경우 최대 가중치
 CharDbWeightMin: 1 # GetCharKind 에서 DB일 경우 최소 가중치
@@ -45,9 +45,9 @@ CharWildcard: # Char 파일을 안쓸 경우 Wildcard 설정
 GetLoraKind:
     Wildcard: 1
     DB: 1
-    Weight: 1
+    Weight: 1 # WeightLora.yml 참조
     Random: 1 # 파일 목록중에서 랜덤 선택
-    Cycle: 9
+    Cycle: 1
 
 LoraWildcard: # GetLoraKind 에서 GetLoraKind일 경우
   positive:
