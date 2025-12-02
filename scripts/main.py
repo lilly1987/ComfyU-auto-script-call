@@ -776,10 +776,13 @@ class ComfyUIAutomation:
                         per_val = v2.get('per', 0)
                         r = random.random()
                         if per_val > r:
-                            loras = v2.get('loras')
-                            lora = random_weight(loras)
-                            tive_weight_tmp[lora] = v2
                             per_cnt += 1
+                            loras = v2.get('loras')
+                            if loras:
+                                lora = random_weight(loras)
+                                tive_weight_tmp[lora] = v2
+                            else:
+                                tive_weight_tmp[f'{k1}-{k2}'] = v2
                 
                 # weight 처리
                 weight = v1.get('weight', False)
@@ -792,9 +795,12 @@ class ComfyUIAutomation:
                     for k2 in loras_key_set_tmp:
                         v2 = dic.get(k2)
                         loras = v2.get('loras')
-                        lora = random_weight(loras)
-                        tive_weight_tmp[lora] = v2
-                
+                        if loras:
+                            lora = random_weight(loras)
+                            tive_weight_tmp[lora] = v2
+                        else:
+                            tive_weight_tmp[f'{k1}-{k2}'] = v2
+                            
                 # total 처리
                 total = v1.get('total', False)
                 if total:
