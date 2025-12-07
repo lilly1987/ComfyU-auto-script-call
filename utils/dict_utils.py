@@ -140,8 +140,14 @@ def update_dict_key(d: Dict, u: Dict, key: str) -> Dict:
     Returns:
         업데이트된 딕셔너리
     """
+    if d is None:
+        d = {}
+    
+    if u is None:
+        return d
+    
     if key in u:
-        if key in d:
+        if key in d and isinstance(d[key], dict) and isinstance(u[key], dict):
             update_dict(d[key], u[key])
         else:
             d[key] = u[key]
