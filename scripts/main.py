@@ -545,6 +545,7 @@ class ComfyUIAutomation:
 
         char_file_names = self.get_now('CharFileNames', default=[])
         weight_char = self.get_now('WeightChar', default={})
+        self.tive_char = {}
 
         # Wildcard: Char 대신 와일드카드 사용
         if selected_kind == 'Wildcard':
@@ -1385,7 +1386,13 @@ class ComfyUIAutomation:
             self.set_wildcard()
             
             if self.get_config("WorkflowPrint", False):
-                print.Config('workflow_api', self.workflow_api)
+                print.Config('workflow_api', self.workflow_api)            
+            
+            if self.get_config("tivePrint", False) or self.get_config("positivePrint", False):
+                print.Config('positivePrint', self.positive_dics)
+            
+            if self.get_config("tivePrint", False) or self.get_config("negativePrint", False):
+                print.Config('negativePrint',  self.negative_dics)
             
             # 루프 최대값 설정
             self.checkpoint_loop = random_min_max(self.get_config("CheckpointLoop", [1, 1]))
