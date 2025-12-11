@@ -24,6 +24,16 @@ CheckpointLoop: [5, 5] # Checkpoint 반복 횟수. 한번 돌때마다 Char 값�
 CharLoop: [3, 3] # Char 반복 횟수. 한번 돌때마다 Lora 값이 바뀜
 queueLoop: [3, 3] # Queue 반복 횟수
 
+# --- Checkpoint 적용 설정 ---
+GetCheckpointKind:
+    DB: 1
+    Weight: 8 # {type}/Checkpoint/*.yml , {type}/WeightChar.yml 순으로 찿아서 참조
+    Random: 1 # 파일 목록중에서 랜덤 선택
+    Cycle: 1
+
+CheckpointDbWeightMax: 100 # GetCharKind 에서 DB일 경우 최대 가중치
+CheckpointDbWeightMin: 1 # GetCharKind 에서 DB일 경우 최소 가중치
+
 # --- char 적용 설정 ---
 GetCharKind:
     Wildcard: 1

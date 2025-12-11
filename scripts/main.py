@@ -494,14 +494,14 @@ class ComfyUIAutomation:
             else:
                 print.Warn(f'no safetensorsStart')
 
+        # GetCheckpointKind 비중 기반 선택 (DB / Weight / Random / Cycle)
+        get_checkpoint_kind = self.get_config('GetCheckpointKind', {'Weight': 1, 'Random': 1, 'DB': 0, 'Cycle': 0})
+        selected_kind = random_weight_count(get_checkpoint_kind)[0]
+        print.Value('GetCheckpointKind selected', selected_kind)
         
         # 랜덤으로 Checkpoint 타입 선택
         self.checkpoint_type = random_weight_count(checkpoint_types)[0]
         print.Value('checkpoint_type', self.checkpoint_type)
-        
-        checkpoint_weight_per = self.get_config('CheckpointWeightPer', 0.5)
-        checkpoint_weight_per_result = checkpoint_weight_per > random.random()
-        print.Value('CheckpointWeightPer', checkpoint_weight_per, checkpoint_weight_per_result)
         
         weight_checkpoint = self.get_now('WeightCheckpoint', default={})
         checkpoint_file_names = self.get_now('CheckpointFileNames', default=[])
@@ -511,21 +511,72 @@ class ComfyUIAutomation:
             print.Err(f'CheckpointPath를 확인하세요: {self.get_config("CheckpointPath")}/{self.checkpoint_type}')
             raise ValueError(f"Checkpoint 파일이 없습니다: {self.checkpoint_type}")
         
-        if checkpoint_weight_per_result:
-            if len(weight_checkpoint) > 0:
-                self.checkpoint_name = random_weight_count(weight_checkpoint)[0]
-            else:
-                self.checkpoint_name = random.choice(checkpoint_file_names)
-                print.Warn('no WeightCheckpoint')
-        else:
-            sub_checkpoint = [x for x in checkpoint_file_names if x not in weight_checkpoint.keys()]
-            print.Value('SubCheckpoint', len(sub_checkpoint))
+        # DB: 데이터베이스 기반 선택
+        if selected_kind == 'DB':
+            if self.db:
+                checkpoint_counts = self.db.get_checkpoint_counts(self.checkpoint_type)
+                checkpoint_db_weight_max = self.get_config('CheckpointDbWeightMax', 100)
+                checkpoint_db_weight_min = self.get_config('CheckpointDbWeightMin', 1)
+                
+                db_weights = {}
+                for checkpoint_name in checkpoint_file_names:
+                    count = checkpoint_counts.get(checkpoint_name, 0)
+                    weight = max(checkpoint_db_weight_min, min(checkpoint_db_weight_max - count, checkpoint_db_weight_max))
+                    db_weights[checkpoint_name] = weight
+                
+                print.Value('DB weights (Checkpoint)', len(db_weights))
+                
+                if db_weights:
+                    self.checkpoint_name = random_weight_count(db_weights)[0]
+                    self.checkpoint_path = self.get_now('CheckpointFileDics', self.checkpoint_name)
+                    print.Value('checkpoint_name (from DB)', self.checkpoint_name)
+                    print.Value('checkpoint_path', self.checkpoint_path)
+                    return
             
-            if len(sub_checkpoint) > 0:
-                self.checkpoint_name = random.choice(sub_checkpoint)
+            # DB 사용 불가 시 Weight로 처리
+            print.Warn('DB method selected but DB is not available. Using Weight method')
+            selected_kind = 'Weight'
+        
+        # Cycle: 파일 목록을 순환하며 선택
+        if selected_kind == 'Cycle':
+            checkpoint_file_names = self.get_now('CheckpointFileNames', default=[])
+            selected_checkpoints = self._cycle_sample('CheckpointCyclePool', checkpoint_file_names, 1)
+            if selected_checkpoints:
+                self.checkpoint_name = selected_checkpoints[0]
+                self.checkpoint_path = self.get_now('CheckpointFileDics', self.checkpoint_name)
+                print.Value('checkpoint_name (Cycle)', self.checkpoint_name)
+                print.Value('checkpoint_path', self.checkpoint_path)
+                return
             else:
                 self.checkpoint_name = random.choice(checkpoint_file_names)
-                print.Warn('no WeightCheckpoint')
+                print.Warn('No checkpoint files available for Cycle method. Using random selection')
+        
+        # Weight: 기존 WeightCheckpoint 기반 선택
+        if selected_kind == 'Weight':
+            checkpoint_weight_per = self.get_config('CheckpointWeightPer', 0.5)
+            checkpoint_weight_per_result = checkpoint_weight_per > random.random()
+            print.Value('CheckpointWeightPer', checkpoint_weight_per, checkpoint_weight_per_result)
+            
+            if checkpoint_weight_per_result:
+                if len(weight_checkpoint) > 0:
+                    self.checkpoint_name = random_weight_count(weight_checkpoint)[0]
+                else:
+                    self.checkpoint_name = random.choice(checkpoint_file_names)
+                    print.Warn('no WeightCheckpoint')
+            else:
+                sub_checkpoint = [x for x in checkpoint_file_names if x not in weight_checkpoint.keys()]
+                print.Value('SubCheckpoint', len(sub_checkpoint))
+                
+                if len(sub_checkpoint) > 0:
+                    self.checkpoint_name = random.choice(sub_checkpoint)
+                else:
+                    self.checkpoint_name = random.choice(checkpoint_file_names)
+                    print.Warn('no WeightCheckpoint')
+        
+        # Random: 파일 목록에서 랜덤 선택
+        elif selected_kind == 'Random':
+            self.checkpoint_name = random.choice(checkpoint_file_names)
+            print.Value('checkpoint_name (Random)', self.checkpoint_name)
         
         print.Value('checkpoint_name', self.checkpoint_name)
         self.checkpoint_path = self.get_now('CheckpointFileDics', self.checkpoint_name)
