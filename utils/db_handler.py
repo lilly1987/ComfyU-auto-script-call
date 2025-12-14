@@ -166,6 +166,30 @@ class DatabaseHandler:
         
         return char_counts
     
+    def get_checkpoint_counts(self, checkpoint_type: str) -> dict:
+        """
+        Checkpoint 사용 횟수를 가져옵니다.
+        
+        Args:
+            checkpoint_type: 체크포인트 타입
+        
+        Returns:
+            {checkpoint_name: count} 딕셔너리
+        """
+        if self.db is None:
+            return {}
+        
+        checkpoint_table = self.db.table(f'{checkpoint_type}-Checkpoint')
+        checkpoint_counts = {}
+        
+        for doc in checkpoint_table.all():
+            checkpoint_name = doc.get('Checkpoint')
+            count = doc.get('count', 0)
+            if checkpoint_name:
+                checkpoint_counts[checkpoint_name] = count
+        
+        return checkpoint_counts
+    
     def get_lora_counts(self, checkpoint_type: str) -> dict:
         """
         LoRA 사용 횟수를 가져옵니다.

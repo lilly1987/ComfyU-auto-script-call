@@ -28,8 +28,8 @@ queueLoop: [3, 3] # Queue 반복 횟수
 GetCheckpointKind:
     DB: 1
     Weight: 8 # {type}/Checkpoint/*.yml , {type}/WeightChar.yml 순으로 찿아서 참조
-    Random: 1 # 파일 목록중에서 랜덤 선택
-    Cycle: 1
+    Random: 2 # 파일 목록중에서 랜덤 선택
+    Cycle: 4
 
 CheckpointDbWeightMax: 100 # GetCharKind 에서 DB일 경우 최대 가중치
 CheckpointDbWeightMin: 1 # GetCharKind 에서 DB일 경우 최소 가중치
@@ -39,8 +39,8 @@ GetCharKind:
     Wildcard: 1
     DB: 1
     Weight: 8 # {type}/lora/*.yml , {type}/WeightChar.yml 순으로 찿아서 참조
-    Random: 1 # 파일 목록중에서 랜덤 선택
-    Cycle: 1
+    Random: 2 # 파일 목록중에서 랜덤 선택
+    Cycle: 2
 
 CharDbWeightMax: 100 # GetCharKind 에서 DB일 경우 최대 가중치
 CharDbWeightMin: 1 # GetCharKind 에서 DB일 경우 최소 가중치
