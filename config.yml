@@ -5,7 +5,7 @@ base_dir: W:\ComfyUI_windows_portable  # 작업 디렉토리
 # --- 처리할 타입 리스트 ---
 CheckpointTypes: # Checkpoint 및 Lora 종류. 뒤의 숫자는 사용할 가중치. 키 추가시 재실행 필요. 가중치는 실시간 반영
   IL: 10
-  Pony: 1
+  # Pony: 1
 
 # --- 경로 설정 ---
 CheckpointPath: ../ComfyUI/models/checkpoints # Checkpoint 폴더. 변경시 재실행 필요.
@@ -67,11 +67,11 @@ LoraWildcard: # GetLoraKind 에서 GetLoraKind일 경우
 
 LoraDbWeightMax: 100 # GetLoraKind 에서 DB일 경우 최대 가중치
 LoraDbWeightMin: 1 # GetLoraKind 에서 DB일 경우 최소 가중치
-LoraDbCnt: [1,3] # GetLoraKind 에서 DB일 경우 DatabaseHandler에서 가져가 쓸 갯수
+LoraDbCnt: [0,2] # GetLoraKind 에서 DB일 경우 DatabaseHandler에서 가져가 쓸 갯수
 
-LoraRandomCnt: [1,3] # GetLoraKind 에서 Random일 경우 목록에서 가져가 쓸 갯수
+LoraRandomCnt: [0,2] # GetLoraKind 에서 Random일 경우 목록에서 가져가 쓸 갯수
 
-LoraCycleCnt: [1,3] # GetLoraKind 에서 DB일 경우 DatabaseHandler에서 가져가 쓸 갯수
+LoraCycleCnt: [0,2] # GetLoraKind 에서 DB일 경우 DatabaseHandler에서 가져가 쓸 갯수
 
 # --- Weight 설정 ---
 CheckpointWeightPer: 0.75 # WeightCheckpoint.yml 파일을 쓸 확률
