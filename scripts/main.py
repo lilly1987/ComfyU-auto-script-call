@@ -590,7 +590,7 @@ class ComfyUIAutomation:
     def char_change(self):
         """Char를 선택합니다."""
         # GetCharKind 비중 기반 선택 (Wildcard / DB / Weight / Random)
-        get_char_kind = self.get_config('GetCharKind', {'Wildcard': 1, 'DB': 1, 'Weight': 1, 'Random': 1, 'Cycle': 1})
+        get_char_kind = self.get_config('GetCharKind', {'Wildcard': 1, 'DB': 1, 'Weight': 1, 'Random': 1, 'Cycle': 1, 'Skip': 1})
         selected_kind = random_weight_count(get_char_kind)[0]
         print.Value('GetCharKind selected', selected_kind)
 
@@ -676,6 +676,34 @@ class ComfyUIAutomation:
                 self.no_char = True
                 self.tive_char = self.get_now('CharWildcard',default= {})
                 print.Warn('No char files available for Cycle method. Using CharWildcard')
+            return
+
+        # Skip: 'skip' 필드가 False가 아닌 항목들 중 랜덤 선택
+        if selected_kind == 'Skip':
+            char_file_names = self.get_now('CharFileNames', default=[])
+            # dicLoraYml에서 skip 필드 확인 (기본 False)
+            candidates = []
+            for cname in char_file_names:
+                c_dic = self.get_now('dicLoraYml', cname, default={})
+                if c_dic.get('skip', False) != False:
+                    candidates.append(cname)
+
+            print.Value('Skip', len(candidates))
+
+            if candidates:
+                self.char_name = random.choice(candidates)
+                self.char_path = self.get_now('CharFileDics', self.char_name)
+                self.no_char = False
+                char_dic = self.get_now('dicLoraYml', self.char_name, default={})
+                update_dict_key(self.tive_char, char_dic, 'positive')
+                update_dict_key(self.tive_char, char_dic, 'negative')
+                print.Value('char_name (Skip)', self.char_name)
+                print.Value('char_path', self.char_path)
+            else:
+                # 후보가 없으면 와일드카드로 처리
+                self.no_char = True
+                self.tive_char = self.get_now('CharWildcard', default={})
+                print.Warn('No char files matching Skip criteria. Using CharWildcard')
             return
 
         # Weight: 기존 WeightChar 기반 선택
