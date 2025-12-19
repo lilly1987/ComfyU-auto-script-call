@@ -74,7 +74,7 @@ class ComfyUIAutomation:
         self.char_path: Optional[str] = None
         self.lora_tmp: Optional[str] = None
         self.no_char = False
-        self.no_lora = False
+        # self.no_lora = False
         
         # LoRA 및 태그
         self.loras_set: Set[str] = set()
@@ -129,6 +129,7 @@ class ComfyUIAutomation:
             # 기본값: config.yml에서 로드
             char_wildcard = self.get_config('CharWildcard', {})
             lora_wildcard = self.get_config('LoraWildcard', {})
+            # LoraWildcardEtc = self.get_config('LoraWildcardEtc', {})
             
             # setupWildcard.yml 로드 (base + type-specific)
             setup_wildcard = self.yaml_handler.load_simple(str(data_path / 'setupWildcard.yml')) or {}
@@ -144,9 +145,13 @@ class ComfyUIAutomation:
             if setup_wildcard.get('LoraWildcard'):
                 lora_wildcard = setup_wildcard['LoraWildcard']
             
+            # if setup_wildcard.get('LoraWildcardEtc'):
+            #     LoraWildcardEtc = setup_wildcard['LoraWildcardEtc']
+            
             # type_dics에 저장
             set_nested(self.type_dics, char_wildcard, checkpoint_type, 'CharWildcard')
             set_nested(self.type_dics, lora_wildcard, checkpoint_type, 'LoraWildcard')
+            # set_nested(self.type_dics, LoraWildcardEtc, checkpoint_type, 'LoraWildcardEtc')
     
     def init(self, delete: bool = True, db: bool = False):
         """초기화합니다."""
@@ -251,7 +256,7 @@ class ComfyUIAutomation:
 
     def _collect_lora_tags(self) -> List[str]:
         """현재 선택된 LoRA의 태그를 모읍니다."""
-        if self.no_lora or not self.loras_set:
+        if  not self.loras_set:
             return []
 
         tags: List[str] = []
@@ -597,6 +602,7 @@ class ComfyUIAutomation:
         char_file_names = self.get_now('CharFileNames', default=[])
         weight_char = self.get_now('WeightChar', default={})
         self.tive_char = {}
+        self.char_dic = {}
 
         # Wildcard: Char 대신 와일드카드 사용
         if selected_kind == 'Wildcard':
@@ -628,9 +634,9 @@ class ComfyUIAutomation:
                     self.char_path = self.get_now('CharFileDics', self.char_name)
                     self.no_char = False
                     # DB에서 선택된 char에 대한 positive/negative 업데이트
-                    char_dic = self.get_now('dicLoraYml', self.char_name, default={})
-                    update_dict_key(self.tive_char, char_dic, 'positive')
-                    update_dict_key(self.tive_char, char_dic, 'negative')
+                    self.char_dic = self.get_now('dicLoraYml', self.char_name, default={})
+                    update_dict_key(self.tive_char, self.char_dic, 'positive')
+                    update_dict_key(self.tive_char, self.char_dic, 'negative')
                     print.Value('char_name (from DB)', self.char_name)
                     print.Value('char_path', self.char_path)
                     return
@@ -648,9 +654,9 @@ class ComfyUIAutomation:
                 self.char_path = self.get_now('CharFileDics', self.char_name)
                 self.no_char = False
                 # Random에서 선택된 char에 대한 positive/negative 업데이트
-                char_dic = self.get_now('dicLoraYml', self.char_name, default={})
-                update_dict_key(self.tive_char, char_dic, 'positive')
-                update_dict_key(self.tive_char, char_dic, 'negative')
+                self.char_dic = self.get_now('dicLoraYml', self.char_name, default={})
+                update_dict_key(self.tive_char, self.char_dic, 'positive')
+                update_dict_key(self.tive_char, self.char_dic, 'negative')
                 print.Value('char_name (Random)', self.char_name)
                 print.Value('char_path', self.char_path)
             else:
@@ -667,9 +673,9 @@ class ComfyUIAutomation:
                 self.char_name = selected_chars[0]
                 self.char_path = self.get_now('CharFileDics', self.char_name)
                 self.no_char = False
-                char_dic = self.get_now('dicLoraYml', self.char_name, default={})
-                update_dict_key(self.tive_char, char_dic, 'positive')
-                update_dict_key(self.tive_char, char_dic, 'negative')
+                self.char_dic = self.get_now('dicLoraYml', self.char_name, default={})
+                update_dict_key(self.tive_char, self.char_dic, 'positive')
+                update_dict_key(self.tive_char, self.char_dic, 'negative')
                 print.Value('char_name (Cycle)', self.char_name)
                 print.Value('char_path', self.char_path)
             else:
@@ -694,9 +700,9 @@ class ComfyUIAutomation:
                 self.char_name = random.choice(candidates)
                 self.char_path = self.get_now('CharFileDics', self.char_name)
                 self.no_char = False
-                char_dic = self.get_now('dicLoraYml', self.char_name, default={})
-                update_dict_key(self.tive_char, char_dic, 'positive')
-                update_dict_key(self.tive_char, char_dic, 'negative')
+                self.char_dic = self.get_now('dicLoraYml', self.char_name, default={})
+                update_dict_key(self.tive_char, self.char_dic, 'positive')
+                update_dict_key(self.tive_char, self.char_dic, 'negative')
                 print.Value('char_name (Skip)', self.char_name)
                 print.Value('char_path', self.char_path)
             else:
@@ -737,19 +743,19 @@ class ComfyUIAutomation:
     
     def lora_change(self):
         """LoRA를 선택합니다."""
+        # self.no_lora = True
         self.tive_weight = {}
         self.loras_set = set()
         # GetLoraKind 비중 기반 선택
         get_lora_kind = self.get_config('GetLoraKind', {'Wildcard': 1, 'DB': 1, 'Weight': 1, 'Random': 1, 'Cycle': 1})
         selected_kind = random_weight_count(get_lora_kind)[0]
         print.Value('GetLoraKind selected', selected_kind)
-
+ 
         # Wildcard: LoRA 대신 와일드카드 사용
-        if selected_kind == 'Wildcard':
-            self.no_lora = True
+        if selected_kind in ['DB', 'Random', 'Cycle','Wildcard'] :
             self.tive_lora = self.get_now('LoraWildcard',default= {})
             print.Value('Lora Wildcard used')
-            return
+            # return
 
         # DB 방식: 데이터베이스 기반 선택
         if selected_kind == 'DB':
@@ -775,7 +781,7 @@ class ComfyUIAutomation:
                 if db_weights:
                     selected_loras = random_weight_count(db_weights, count=min(cnt, len(db_weights)))
                     self.loras_set = set(selected_loras)
-                    self.no_lora = False
+                    # self.no_lora = False
                     
                     # DB에서 선택된 로라들에 대한 positive/negative 업데이트
                     for lora_name in selected_loras:
@@ -792,14 +798,14 @@ class ComfyUIAutomation:
         if selected_kind == 'Random':
             lora_file_names = self.get_now('LoraFileNames', default=[])
             if not lora_file_names:
-                self.no_lora = True
+                # self.no_lora = True
                 print.Warn('No Lora files available for Random method')
                 return
             cnt = random_min_max(self.get_config('LoraRandomCnt', [1, 6]))
             cnt = min(cnt, len(lora_file_names))
             selected = set(random.sample(list(lora_file_names), cnt))
             self.loras_set = selected
-            self.no_lora = False
+            # self.no_lora = False
             # Random에서 선택된 로라들에 대한 positive/negative 업데이트
             for lora_name in selected:
                 lora_dic = self.get_now('dicLoraYml', lora_name, default={})
@@ -812,17 +818,17 @@ class ComfyUIAutomation:
         if selected_kind == 'Cycle':
             lora_file_names = self.get_now('LoraFileNames', default=[])
             if not lora_file_names:
-                self.no_lora = True
+                # self.no_lora = True
                 print.Warn('No Lora files available for Cycle method')
                 return
             cnt = random_min_max(self.get_config('LoraRandomCnt', [1, 6]))
             selected_list = self._cycle_sample('LoraCyclePool', lora_file_names, cnt)
             if not selected_list:
-                self.no_lora = True
+                # self.no_lora = True
                 print.Warn('Cycle method could not select any Lora')
                 return
             self.loras_set = set(selected_list)
-            self.no_lora = False
+            # self.no_lora = False
             for lora_name in selected_list:
                 lora_dic = self.get_now('dicLoraYml', lora_name, default={})
                 update_dict_key(self.tive_weight, lora_dic, 'positive')
@@ -832,6 +838,7 @@ class ComfyUIAutomation:
         
         # Weight 방식: Weight 파일 기반 선택
         elif selected_kind == 'Weight':
+            # self.no_lora = False
             weight_lora = self.get_now('WeightLora', default={})
             
             for k1, v1 in weight_lora.items():
@@ -903,7 +910,6 @@ class ComfyUIAutomation:
             if self.get_config("LoraChangePrint", False):
                 print.Config('positiveDics', self.positive_dics)
                 print.Config('negativeDics', self.negative_dics)
-            self.no_lora = False
             print.Value('lorasSet', self.loras_set)
     
     def get_workflow(self, node: str, key: str) -> Any:
@@ -1047,11 +1053,12 @@ class ComfyUIAutomation:
     def set_save_image(self):
         """이미지 저장 설정을 합니다."""
         tcp = '+' if self.tive_checkpoint else ''
-        tch = '+' if self.tive_char else ''
+        tch = '+' if not self.no_char else ''
+        tcs = '=' if self.char_dic.get('skip', False) else ''
         
         ff = (f"{self.checkpoint_type}/"
                f"{self.checkpoint_name}{tcp}/"
-               f"{self.char_name}{tch}/"
+               f"{self.char_name}{tch}{tcs}/"
                f"{self.checkpoint_name}-{self.char_name}-{len(self.loras_set)}-"
                f"{time.strftime('%Y%m%d-%H%M%S')}-{self.total}")
         
@@ -1178,55 +1185,58 @@ class ComfyUIAutomation:
             model_sampling_discrete = 'CheckpointLoaderSimple'
             print.Value('model reference changed to CheckpointLoaderSimple')
         
-        if self.no_lora:
-            self.tive_lora = self.get_now('LoraWildcard', default={})
-        else:
-            self.tive_lora = {}
-            for self.lora_tmp in self.loras_set:
-                if self.lora_tmp not in self.get_now('LoraFileNames', default=[]):
-                    print.Warn('SetLora no', self.lora_tmp)
-                    continue
-                
-                self.lora_num += 1
-                
-                dic = self.get_now('dicLoraYml', self.lora_tmp, default={})
-                update_dict(self.tive_lora, dic)
-                
-                lora_loader_tmp_key = f'LoraLoader-{self.lora_tmp}'
-                lora_loader_tmp = copy.deepcopy(lora_loader)
-                set_nested(self.workflow_api, lora_loader_tmp, lora_loader_tmp_key)
-                
-                model_input = self.get_workflow(lora_loader_tmp_key, 'model')
-                if isinstance(model_input, list):
-                    model_input[0] = model_sampling_discrete
-                
-                clip_input = self.get_workflow(lora_loader_tmp_key, 'clip')
-                if isinstance(clip_input, list):
-                    clip_input[0] = checkpoint_loader_simple
-                
-                self.set_workflow(lora_loader_tmp_key, 'seed', seed_int())
-                self.set_workflow(lora_loader_tmp_key, 'lora_name', 
-                                  self.get_now('LoraFileDics', self.lora_tmp))
-                
-                self.set_workflow_func_random(lora_loader_tmp_key,
-                                               ['strength_model', 'strength_clip', 'A', 'B'],
-                                               self.set_lora_sub,
-                                               random_min_max)
-                self.set_workflow_func_random(lora_loader_tmp_key,
-                                               ['preset', 'block_vector'],
-                                               self.set_lora_sub,
-                                               random_weight)
-                
-                model_input = self.get_workflow(lora_loader_next_key, 'model')
-                if isinstance(model_input, list):
-                    model_input[0] = lora_loader_tmp_key
-                
-                clip_input = self.get_workflow(lora_loader_next_key, 'clip')
-                if isinstance(clip_input, list):
-                    clip_input[0] = lora_loader_tmp_key
-                
-                lora_loader_next = lora_loader_tmp
-                lora_loader_next_key = lora_loader_tmp_key
+        self.tive_lora = {}
+        # if self.SetLoraWildcardEtc:
+        #     update_dict(self.tive_lora, self.get_now('LoraWildcardEtc', default={}))
+
+        # if self.no_lora:
+        #     update_dict(self.tive_lora, self.get_now('LoraWildcard', default={}))
+
+        for self.lora_tmp in self.loras_set:
+            if self.lora_tmp not in self.get_now('LoraFileNames', default=[]):
+                print.Warn('SetLora no', self.lora_tmp)
+                continue
+            
+            self.lora_num += 1
+            
+            dic = self.get_now('dicLoraYml', self.lora_tmp, default={})
+            update_dict(self.tive_lora, dic)
+            
+            lora_loader_tmp_key = f'LoraLoader-{self.lora_tmp}'
+            lora_loader_tmp = copy.deepcopy(lora_loader)
+            set_nested(self.workflow_api, lora_loader_tmp, lora_loader_tmp_key)
+            
+            model_input = self.get_workflow(lora_loader_tmp_key, 'model')
+            if isinstance(model_input, list):
+                model_input[0] = model_sampling_discrete
+            
+            clip_input = self.get_workflow(lora_loader_tmp_key, 'clip')
+            if isinstance(clip_input, list):
+                clip_input[0] = checkpoint_loader_simple
+            
+            self.set_workflow(lora_loader_tmp_key, 'seed', seed_int())
+            self.set_workflow(lora_loader_tmp_key, 'lora_name', 
+                                self.get_now('LoraFileDics', self.lora_tmp))
+            
+            self.set_workflow_func_random(lora_loader_tmp_key,
+                                            ['strength_model', 'strength_clip', 'A', 'B'],
+                                            self.set_lora_sub,
+                                            random_min_max)
+            self.set_workflow_func_random(lora_loader_tmp_key,
+                                            ['preset', 'block_vector'],
+                                            self.set_lora_sub,
+                                            random_weight)
+            
+            model_input = self.get_workflow(lora_loader_next_key, 'model')
+            if isinstance(model_input, list):
+                model_input[0] = lora_loader_tmp_key
+            
+            clip_input = self.get_workflow(lora_loader_next_key, 'clip')
+            if isinstance(clip_input, list):
+                clip_input[0] = lora_loader_tmp_key
+            
+            lora_loader_next = lora_loader_tmp
+            lora_loader_next_key = lora_loader_tmp_key
     
     def set_char_sub(self, k: str) -> Any:
         """Char 서브 함수."""
