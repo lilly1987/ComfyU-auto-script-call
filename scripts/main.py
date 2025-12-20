@@ -1064,6 +1064,7 @@ class ComfyUIAutomation:
         
         self.set_workflow('SaveImage1', 'filename_prefix', ff + "-1")
         self.set_workflow('SaveImage2', 'filename_prefix', ff + "-2")
+        self.set_workflow('SaveVideo', 'filename_prefix', ff )
         
         if self.get_config('noSaveImage1', False):
             from utils.dict_utils import pop_nested
