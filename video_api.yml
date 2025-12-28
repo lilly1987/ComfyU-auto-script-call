@@ -50,7 +50,10 @@
   },
   "61": {
     "inputs": {
-      "text": "Close eyes. \nTilt head back. \nfutanari.\nClose-up.\ntake off skirt.\ncompletely nude, nude,",
+      "text": [
+        "114",
+        0
+      ],
       "clip": [
         "57",
         0
@@ -79,10 +82,9 @@
   },
   "64": {
     "inputs": {
-      "filename_prefix": "20251228-204033-wan_DasiwaWAN22I2V14BTastysinV8_q4High.gguf",
+      "filename_prefix": "20251228-220411-wan_DasiwaWAN22I2V14BTastysinV8_q2High.gguf",
       "format": "auto",
       "codec": "auto",
-      "video-preview": "",
       "video": [
         "68",
         0
@@ -109,8 +111,11 @@
   "67": {
     "inputs": {
       "add_noise": "enable",
-      "noise_seed": 657878199760424,
-      "steps": 4,
+      "noise_seed": 50006607414570,
+      "steps": [
+        "113",
+        0
+      ],
       "cfg": 1,
       "sampler_name": "euler",
       "scheduler": "simple",
@@ -157,7 +162,7 @@
   },
   "69": {
     "inputs": {
-      "width": 320,
+      "width": 400,
       "height": 640,
       "length": 121,
       "batch_size": 1,
@@ -186,8 +191,11 @@
   "70": {
     "inputs": {
       "add_noise": "disable",
-      "noise_seed": 361193990567573,
-      "steps": 4,
+      "noise_seed": 530356030993745,
+      "steps": [
+        "113",
+        0
+      ],
       "cfg": 1,
       "sampler_name": "euler",
       "scheduler": "simple",
@@ -221,7 +229,7 @@
   },
   "71": {
     "inputs": {
-      "unet_name": "wan\\DasiwaWAN22I2V14BTastysinV8_q4Low.gguf"
+      "unet_name": "wan\\DasiwaWAN22I2V14BTastysinV8_q2Low.gguf"
     },
     "class_type": "UnetLoaderGGUF",
     "_meta": {
@@ -230,7 +238,7 @@
   },
   "73": {
     "inputs": {
-      "unet_name": "wan\\DasiwaWAN22I2V14BTastysinV8_q4High.gguf"
+      "unet_name": "wan\\DasiwaWAN22I2V14BTastysinV8_q2High.gguf"
     },
     "class_type": "UnetLoaderGGUF",
     "_meta": {
@@ -243,7 +251,7 @@
       "filename_optional": "",
       "search_subfolders": true,
       "n_images": 1,
-      "seed": 231901818777633,
+      "seed": 325626545137772,
       "sort": false,
       "export_with_alpha": false
     },
@@ -254,27 +262,10 @@
   },
   "76": {
     "inputs": {
-      "wildcard_text": "The woman sits down and stands up repeatedly, shaking her body very quickly, lifting her skirt to show her vagina, and masturbating with her hands.
-and {1-2$$ and $$
-|The women lie down with their legs spread and look up at the viewer while having intense sexual intercourse with the men. The men's large penis moves in and out of the vagina at a very fast speed. Their genitals move like pistons, causing their pelvises to shake and their breasts to bounce. They bounce forward and their breasts shake. I arch my back, feeling pleasure from the fast-paced movement. They are immersed in deep pleasure and have faint smiles on their faces. They stare at the camera with seductive eyes.
-|They are having sex with men in cowgirl position. As the wamen's genitals go in and out of their anuses, the girls move up and down gently, their breasts and buttocks bouncing. The girls enjoy this act, moaning with seductive expressions.
-|The women violently put a large object in and out of their vagina. Their whole bodies convulse and they orgasm several more times.
-|A woman is having sex with a waman on his back.
-|In cowgirl position, the waman stays still and the woman moves up and down on her penis. During sex in cowgirl position, the woman rubs her vagina against the waman's penis and moans. The waman's penis is deep inside her vagina, and the woman moves her vagina up and down and shakes her breasts.
-|She takes out another large dildo and inserts it into her vagina, pistoning at incredibly fast speeds and masturbating furiously.
-
-|The woman actively moves her body and uses her vagina to insert and withdraw the man's penis.
-|A woman standing behind a woman repeatedly hits the woman's buttocks with his penis. The woman's breasts tremble, and she gives oral sex to the woman in front of her. The woman in front continues to push her penis into her mouth.
-|Another person just like them appears and has sex with her.
-|The women perform rear sex with both legs lifted and the body folded forward.
-|woman's are fingering their vaginas with their two middle fingers.
-}
-and woman's are opening their eyes, keep looking at the camera.
-and woman's are only Asians.
-",
-      "populated_text": "",
+      "wildcard_text": "The woman sits down and stands up repeatedly, shaking her body very quickly, lifting her skirt to show her vagina, and masturbating with her hands.\nand As soon as the video starts, {1-2$$ and $$\n|The women lie down with their legs spread and look up at the viewer while having intense sexual intercourse with the men. The men's large penis moves in and out of the vagina at a very fast speed. Their genitals move like pistons, causing their pelvises to shake and their breasts to bounce. They bounce forward and their breasts shake. I arch my back, feeling pleasure from the fast-paced movement. They are immersed in deep pleasure and have faint smiles on their faces. They stare at the camera with seductive eyes.\n|They are having sex with men in cowgirl position. As the wamen's genitals go in and out of their anuses, the girls move up and down gently, their breasts and buttocks bouncing. The girls enjoy this act, moaning with seductive expressions.\n|The women violently put a large object in and out of their vagina. Their whole bodies convulse and they orgasm several more times.\n|A woman is having sex with a waman on his back.\n|In cowgirl position, the waman stays still and the woman moves up and down on her penis. During sex in cowgirl position, the woman rubs her vagina against the waman's penis and moans. The waman's penis is deep inside her vagina, and the woman moves her vagina up and down and shakes her breasts.\n|She takes out another large dildo and inserts it into her vagina, pistoning at incredibly fast speeds and masturbating furiously.\n\n|The woman actively moves her body and uses her vagina to insert and withdraw the man's penis.\n|A woman standing behind a woman repeatedly hits the woman's buttocks with his penis. The woman's breasts tremble, and she gives oral sex to the woman in front of her. The woman in front continues to push her penis into her mouth.\n|Another person just like them appears and has sex with her.\n|The women perform rear sex with both legs lifted and the body folded forward.\n|woman's are fingering their vaginas with their two middle fingers.\n}\nand woman's are opening their eyes, keep looking at the camera.\nand woman's are only Asians.\n",
+      "populated_text": "The woman sits down and stands up repeatedly, shaking her body very quickly, lifting her skirt to show her vagina, and masturbating with her hands. and Another person just like them appears and has sex with her.  and woman's are opening their eyes, keep looking at the camera. and woman's are only Asians. ",
       "mode": "populate",
-      "seed": 1063589105916220,
+      "seed": 566378950069065,
       "Select to add Wildcard": "Select the Wildcard to add to the text"
     },
     "class_type": "ImpactWildcardProcessor",
@@ -289,6 +280,28 @@ and woman's are only Asians.
     "class_type": "ImpactInt",
     "_meta": {
       "title": "ed,st step"
+    }
+  },
+  "113": {
+    "inputs": {
+      "value": 4
+    },
+    "class_type": "ImpactInt",
+    "_meta": {
+      "title": "max step"
+    }
+  },
+  "114": {
+    "inputs": {
+      "wildcard_text": "Close eyes. \nTilt head back. \nfutanari.\nClose-up.\ntake off skirt.\ncompletely nude, nude,",
+      "populated_text": "The woman sits down and stands up repeatedly, shaking her body very quickly, lifting her skirt to show her vagina, and masturbating with her hands.\nand Another person just like them appears and has sex with her.\n\nand woman's are opening their eyes, keep looking at the camera.\nand woman's are only Asians.\n",
+      "mode": "populate",
+      "seed": 566378950069065,
+      "Select to add Wildcard": "Select the Wildcard to add to the text"
+    },
+    "class_type": "ImpactWildcardProcessor",
+    "_meta": {
+      "title": "와일드카드 처리기 (Impact)"
     }
   }
 }

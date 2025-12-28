@@ -53,22 +53,39 @@ def queue_prompt(prompt):
     request.urlopen(req)
 
 
+# Cache for parsed YAML and its last-modified time. This prevents re-parsing the file
+# on every loop iteration; we only reload when the file on disk changes.
+_video_api_cache = None
+_video_api_mtime = None
+
+
 def load_prompt():
     '''
     현재 디렉토리의 `video_api.yml` 파일을 읽어옵니다. YAML 형식으로 파싱합니다.
-    PyYAML이 설치되어 있지 않으면 오류를 발생시킵니다.
+    파일이 변경되지 않았다면 캐시된 값을 반환합니다. PyYAML이 설치되어 있지 않으면 오류를 발생시킵니다.
     '''
     path = os.path.join(os.path.dirname(__file__), 'video_api.yml')
     if not os.path.exists(path):
         logger.error(f'video_api.yml not found: {path}')
         raise FileNotFoundError(f'video_api.yml not found: {path}')
 
-    logger.info(f'Loading prompt file: {path}')
-    s = open(path, 'r', encoding='utf-8').read()
-
+    # ensure YAML support is available early
     if yaml is None:
         logger.error('PyYAML is required to parse video_api.yml. Please install pyyaml.')
         raise ValueError('PyYAML is required to parse video_api.yml. Please install pyyaml.')
+
+    # check file modification time and use cache when unchanged
+    mtime = os.path.getmtime(path)
+    global _video_api_cache, _video_api_mtime
+    if _video_api_cache is not None and _video_api_mtime == mtime:
+        logger.debug('Using cached prompt (file unchanged)')
+        # return a deep copy so callers can mutate safely without affecting the cache
+        from copy import deepcopy
+        return deepcopy(_video_api_cache)
+
+    logger.info(f'Loading prompt file: {path}')
+    with open(path, 'r', encoding='utf-8') as f:
+        s = f.read()
 
     try:
         data = yaml.safe_load(s)
@@ -76,13 +93,50 @@ def load_prompt():
             logger.info(f'Loaded prompt with {len(data)} top-level entries')
         else:
             logger.info('Loaded prompt (non-dict root)')
-        return data
+        # store a deep copy in cache to avoid accidental mutation of cached object
+        from copy import deepcopy
+        _video_api_cache = deepcopy(data)
+        _video_api_mtime = mtime
+        return deepcopy(data)
     except Exception as e:
         logger.error(f'Failed to parse video_api.yml as YAML: {e}', exc_info=True)
         raise ValueError(f'Failed to parse video_api.yml as YAML: {e}')
 
 
-def edit_prompt(prompt):
+def edit_prompt_Wildcard(prompt):
+    '''
+    prompt의 구조 :
+    {
+        '순번 또는 텍스트' : {
+            "inputs": { ... },
+            'class_type': '...'
+        }
+    }
+
+    기능 :
+    class_type이 'ImpactWildcardProcessor'인 경우,
+    "inputs"의 "populated_text" 값을 ''로 설정
+
+    '''
+    if not isinstance(prompt, dict):
+        logger.warning('edit_prompt_Wildcard called with non-dict prompt')
+        return prompt
+
+    for name, entry in prompt.items():
+        if not isinstance(entry, dict):
+            continue
+        class_type = entry.get('class_type')
+        inputs = entry.get('inputs')
+        if not isinstance(inputs, dict):
+            continue
+
+        if class_type == 'ImpactWildcardProcessor':
+            inputs['populated_text'] = ''
+            logger.info(f'[{name}] populated_text: {inputs["populated_text"]}')
+
+    return prompt
+
+def edit_prompt_seed(prompt):
     '''
     prompt의 구조 :
     {
@@ -127,8 +181,11 @@ if __name__ == '__main__':
     logger.info('video_api started')
     try:
         while True:
+
             prompt = load_prompt()
-            edit_prompt(prompt)
+
+            edit_prompt_Wildcard(prompt)
+            edit_prompt_seed(prompt)
 
             # --- 건수를 1초마다 확인하면서 1개 이상인 경우 대기하기
             q = check_count()
