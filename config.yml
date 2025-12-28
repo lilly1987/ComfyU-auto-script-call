@@ -31,6 +31,7 @@ GetCheckpointKind:
     Random: 1 # 파일 목록중에서 랜덤 선택
     Cycle: 1
 
+CheckpointDbWeight: 50 # GetCharKind 에서 DB일 경우 최대 가중치
 CheckpointDbWeightMax: 100 # GetCharKind 에서 DB일 경우 최대 가중치
 CheckpointDbWeightMin: 1 # GetCharKind 에서 DB일 경우 최소 가중치
 
