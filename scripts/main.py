@@ -81,7 +81,7 @@ class ComfyUIAutomation:
         self.tive_weight: Dict = {}
         self.positive_dics: Dict = {}
         self.negative_dics: Dict = {}
-        self.tive_checkpoint: Dict = {}
+        self.yml_checkpoint: Dict = {}
         self.tive_char: Dict = {}
         self.tive_lora: Dict = {}
         
@@ -991,7 +991,7 @@ class ComfyUIAutomation:
     def set_checkpoint_loader_simple(self):
         """CheckpointLoaderSimple을 설정합니다."""
         self.set_workflow('CheckpointLoaderSimple', 'ckpt_name', self.checkpoint_path)
-        self.tive_checkpoint = self.get_now('dicCheckpointYml', self.checkpoint_name, default={})
+        self.yml_checkpoint = self.get_now('dicCheckpointYml', self.checkpoint_name, default={})
     
     def set_ksampler_sub(self, v: Any, k: str) -> Any:
         """KSampler 서브 함수."""
@@ -1052,16 +1052,30 @@ class ComfyUIAutomation:
     
     def set_save_image(self):
         """이미지 저장 설정을 합니다."""
-        tcp = '+' if self.tive_checkpoint else ''
-        tch = '+' if not self.no_char else ''
-        tcs = '=' if self.char_dic.get('skip', False) else ''
+        print.Value("test",self.yml_checkpoint)
+        print.Value("test",self.char_dic)
+        print.Value("test",self.char_dic.get('skip', False))
+        if self.char_dic.get('skip', False) :
+            tch = '=' 
+        if not self.no_char:
+            tch = '+'
+        else :
+            tch = ''
+
+        print.Value("test",self.yml_checkpoint.get('skip', False))
+        if self.yml_checkpoint.get('skip', False) :
+            tcp = '=' 
+        if self.yml_checkpoint:
+            tcp = '+'
+        else :
+            tcp = ''
         
         ff = (f"{self.checkpoint_type}/"
                f"{self.checkpoint_name}{tcp}/"
-               f"{self.char_name}{tch}{tcs}/"
+               f"{self.char_name}{tch}/"
                f"{self.checkpoint_name}-{self.char_name}-{len(self.loras_set)}-"
                f"{time.strftime('%Y%m%d-%H%M%S')}-{self.total}")
-        
+        print.Value(ff)
         self.set_workflow('SaveImage1', 'filename_prefix', ff + "-1")
         self.set_workflow('SaveImage2', 'filename_prefix', ff + "-2")
         self.set_workflow('SaveVideo', 'filename_prefix', ff )
@@ -1098,7 +1112,7 @@ class ComfyUIAutomation:
         self.negative_dics = {}
         
         self.set_tive('setup', self.get_now('setupWildcard', default={}), True)
-        self.set_tive('Checkpoint', self.tive_checkpoint, True)
+        self.set_tive('Checkpoint', self.yml_checkpoint, True)
         self.set_tive('Char', self.tive_char, True)
         self.set_tive('Weight', self.tive_weight, True)
         self.set_tive('Lora', self.tive_lora, True)
@@ -1275,9 +1289,16 @@ class ComfyUIAutomation:
     def update_safetensors(self, path: Path, checkpoint_type: str, event_type: str,
                           config_key: str, dics_key: str, lists_key: str, names_key: str):
         """SafeTensors 파일 목록을 업데이트합니다."""
-        config_path = Path(self.get_config(config_key))
-        rpath = path.relative_to(config_path)
-        name = rpath.stem
+        # 구성에 저장된 상대 경로를 기준 폴더(base_dir)와 결합하여 절대 경로로 만듭니다.
+        config_path = Path(self.get_config('base_dir'), self.get_config(config_key))
+        try:
+            rpath = path.relative_to(config_path)
+        except ValueError:
+            # 드물지만 path가 config_path의 하위가 아닐 경우에 대비한 폴백 처리
+            if self.get_config('CallbackPrint', False):
+                print.Warn('Path not in config_path, using fallback', path, config_path)
+            rpath = Path(path.name)
+        name = Path(rpath).stem
         print.Value(path, rpath, name)
         
         file_dics = self.get_now(dics_key, default={})
@@ -1497,9 +1518,10 @@ class ComfyUIAutomation:
                   f"{self.char_loop_cnt}/{self.char_loop}, "
                   f"{self.queue_loop_cnt}/{self.queue_loop}, "
                   f"{elapsed}, "
+                  f"{self.checkpoint_type}, "
                   f"{self.checkpoint_name}, "
                   f"{self.char_name}, "
-                  f"{self.checkpoint_type}")
+                  f"{self.get_workflow('EmptyLatentImage', 'batch_size')}")
             
             lora_tags = self._collect_lora_tags()
             self.db.update(
