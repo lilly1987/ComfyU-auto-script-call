@@ -23,9 +23,9 @@ url: http://127.0.0.1:8188/prompt # ComfyUI 로 보낼 url. ComfyUI가 실행중
 # CheckpointLoop: [5, 5] # Checkpoint 반복 횟수. 한번 돌때마다 Char 값이 바뀜
 CheckpointLoop: 5 # Checkpoint 반복 횟수. 한번 돌때마다 Char 값이 바뀜
 # CharLoop: [3, 3] # Char 반복 횟수. 한번 돌때마다 Lora 값이 바뀜
-CharLoop: 2 # Char 반복 횟수. 한번 돌때마다 Lora 값이 바뀜
+CharLoop: 1 # Char 반복 횟수. 한번 돌때마다 Lora 값이 바뀜
 # queueLoop: [3, 3] # Queue 반복 횟수
-queueLoop: 2 # Queue 반복 횟수
+queueLoop: 1 # Queue 반복 횟수
 
 # --- Checkpoint 적용 설정 ---
 GetCheckpointKind:
@@ -143,5 +143,6 @@ queue_prompt_wait: true # 큐 대기 여부
 # positivePrint: true # tivePrint 출력 여부
 # tivePrint: true # tivePrint 출력 여부
 # WorkflowPrint: true # ComfyUI로 보낼기 직전 workflow_api 출력 여부
-# sleep: 11 # 루프 간 대기 시간 (초)
-# queue_prompt: false # ComfyUI에 프롬프트 전송 여부
+sleep: 1 # 루프 간 대기 시간 (초)
+queue_prompt_wait: false # 큐 대기 여부
+queue_prompt: false # ComfyUI에 프롬프트 전송 여부

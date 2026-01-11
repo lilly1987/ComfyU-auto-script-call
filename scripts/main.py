@@ -737,6 +737,9 @@ class ComfyUIAutomation:
                     print.Warn('no SubChar')
                     self.char_name = random.choice(char_file_names) if char_file_names else None
 
+            self.char_dic = self.get_now('dicLoraYml', self.char_name, default={})
+            update_dict_key(self.tive_char, self.char_dic, 'positive')
+            update_dict_key(self.tive_char, self.char_dic, 'negative')
             print.Value('char_name', self.char_name)
             self.char_path = self.get_now('CharFileDics', self.char_name)
             print.Value('char_path', self.char_path)
@@ -1052,12 +1055,13 @@ class ComfyUIAutomation:
     
     def set_save_image(self):
         """이미지 저장 설정을 합니다."""
-        print.Value("test",self.yml_checkpoint)
-        print.Value("test",self.char_dic)
-        print.Value("test",self.char_dic.get('skip', False))
+        print.Value("checkpoint",self.yml_checkpoint)
+        print.Value("char",self.char_dic)
+        # print.Value("test",self.char_dic.get('skip', False))
+
         if self.char_dic.get('skip', False) :
             tch = '=' 
-        if not self.no_char:
+        elif not self.no_char:
             tch = '+'
         else :
             tch = ''
@@ -1065,7 +1069,7 @@ class ComfyUIAutomation:
         print.Value("test",self.yml_checkpoint.get('skip', False))
         if self.yml_checkpoint.get('skip', False) :
             tcp = '=' 
-        if self.yml_checkpoint:
+        elif self.yml_checkpoint:
             tcp = '+'
         else :
             tcp = ''
