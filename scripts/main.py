@@ -593,7 +593,7 @@ class ComfyUIAutomation:
             raise ValueError(f"Checkpoint 경로를 찾을 수 없습니다: {self.checkpoint_name}")
     
     def char_change(self):
-        """Char를 선택합니다."""
+        """Char를 선택합니다. (중복 로직을 줄이고 와일드카드 처리를 명확히 함)"""
         # GetCharKind 비중 기반 선택 (Wildcard / DB / Weight / Random)
         get_char_kind = self.get_config('GetCharKind', {'Wildcard': 1, 'DB': 1, 'Weight': 1, 'Random': 1, 'Cycle': 1, 'Skip': 1})
         selected_kind = random_weight_count(get_char_kind)[0]
@@ -604,13 +604,24 @@ class ComfyUIAutomation:
         self.tive_char = {}
         self.char_dic = {}
 
+        # helper: 선택된 char 값을 일관되게 적용
+        def _apply_selected_char(name: Optional[str], use_wildcard: bool = False):
+            if use_wildcard or not name:
+                self.no_char = True
+                self.char_name = 'Wildcard' if use_wildcard else None
+                self.char_path = None
+                self.tive_char = self.get_now('CharWildcard', default={})
+            else:
+                self.no_char = False
+                self.char_name = name
+                self.char_path = self.get_now('CharFileDics', self.char_name)
+                self.char_dic = self.get_now('dicLoraYml', self.char_name, default={})
+                update_dict_key(self.tive_char, self.char_dic, 'positive')
+                update_dict_key(self.tive_char, self.char_dic, 'negative')
+
         # Wildcard: Char 대신 와일드카드 사용
         if selected_kind == 'Wildcard':
-            self.no_char = True
-            self.char_name = random.choice(char_file_names)
-            self.char_path = self.get_now('CharFileDics', self.char_name)
-            self.char_name='Wildcard'
-            self.tive_char = self.get_now('CharWildcard', default={})
+            _apply_selected_char(None, use_wildcard=True)
             print.Value('Char Wildcard used')
             return
 
@@ -630,91 +641,62 @@ class ComfyUIAutomation:
                 print.Value('DB weights (Char)', len(db_weights))
 
                 if db_weights:
-                    self.char_name = random_weight_count(db_weights)[0]
-                    self.char_path = self.get_now('CharFileDics', self.char_name)
-                    self.no_char = False
-                    # DB에서 선택된 char에 대한 positive/negative 업데이트
-                    self.char_dic = self.get_now('dicLoraYml', self.char_name, default={})
-                    update_dict_key(self.tive_char, self.char_dic, 'positive')
-                    update_dict_key(self.tive_char, self.char_dic, 'negative')
+                    name = random_weight_count(db_weights)[0]
+                    _apply_selected_char(name)
                     print.Value('char_name (from DB)', self.char_name)
                     print.Value('char_path', self.char_path)
                     return
 
             # DB 사용 불가 시 와일드카드로 처리
-            self.no_char = True
-            self.tive_char = self.get_now('CharWildcard',default= {})
+            _apply_selected_char(None, use_wildcard=True)
             print.Warn('DB method selected but DB is not available. Using CharWildcard')
             return
 
         # Random: 파일 목록에서 랜덤 선택
         if selected_kind == 'Random':
             if char_file_names:
-                self.char_name = random.choice(char_file_names)
-                self.char_path = self.get_now('CharFileDics', self.char_name)
-                self.no_char = False
-                # Random에서 선택된 char에 대한 positive/negative 업데이트
-                self.char_dic = self.get_now('dicLoraYml', self.char_name, default={})
-                update_dict_key(self.tive_char, self.char_dic, 'positive')
-                update_dict_key(self.tive_char, self.char_dic, 'negative')
+                name = random.choice(char_file_names)
+                _apply_selected_char(name)
                 print.Value('char_name (Random)', self.char_name)
                 print.Value('char_path', self.char_path)
             else:
-                self.no_char = True
-                self.tive_char = self.get_now('CharWildcard',default= {})
+                _apply_selected_char(None, use_wildcard=True)
                 print.Warn('No char files available. Using CharWildcard')
             return
 
         # Cycle: 파일 목록을 순환하며 선택
         if selected_kind == 'Cycle':
-            char_file_names = self.get_now('CharFileNames', default=[])
             selected_chars = self._cycle_sample('CharCyclePool', char_file_names, 1)
             if selected_chars:
-                self.char_name = selected_chars[0]
-                self.char_path = self.get_now('CharFileDics', self.char_name)
-                self.no_char = False
-                self.char_dic = self.get_now('dicLoraYml', self.char_name, default={})
-                update_dict_key(self.tive_char, self.char_dic, 'positive')
-                update_dict_key(self.tive_char, self.char_dic, 'negative')
+                name = selected_chars[0]
+                _apply_selected_char(name)
                 print.Value('char_name (Cycle)', self.char_name)
                 print.Value('char_path', self.char_path)
             else:
-                self.no_char = True
-                self.tive_char = self.get_now('CharWildcard',default= {})
+                _apply_selected_char(None, use_wildcard=True)
                 print.Warn('No char files available for Cycle method. Using CharWildcard')
             return
 
         # Skip: 'skip' 필드가 False가 아닌 항목들 중 랜덤 선택
         if selected_kind == 'Skip':
-            char_file_names = self.get_now('CharFileNames', default=[])
-            # dicLoraYml에서 skip 필드 확인 (기본 False)
-            candidates = []
-            for cname in char_file_names:
-                c_dic = self.get_now('dicLoraYml', cname, default={})
-                if c_dic.get('skip', False) != False:
-                    candidates.append(cname)
+            candidates = [cname for cname in char_file_names
+                          if self.get_now('dicLoraYml', cname, default={}).get('skip', False) != False]
 
             print.Value('Skip', len(candidates))
 
             if candidates:
-                self.char_name = random.choice(candidates)
-                self.char_path = self.get_now('CharFileDics', self.char_name)
-                self.no_char = False
-                self.char_dic = self.get_now('dicLoraYml', self.char_name, default={})
-                update_dict_key(self.tive_char, self.char_dic, 'positive')
-                update_dict_key(self.tive_char, self.char_dic, 'negative')
+                name = random.choice(candidates)
+                _apply_selected_char(name)
                 print.Value('char_name (Skip)', self.char_name)
                 print.Value('char_path', self.char_path)
             else:
                 # 후보가 없으면 와일드카드로 처리
-                self.no_char = True
-                self.tive_char = self.get_now('CharWildcard', default={})
+                _apply_selected_char(None, use_wildcard=True)
                 print.Warn('No char files matching Skip criteria. Using CharWildcard')
             return
 
         # Weight: 기존 WeightChar 기반 선택
         if selected_kind == 'Weight':
-            self.no_char = False
             char_weight_per = self.get_config('CharWeightPer', 0.5)
             r = random.random()
             char_weight_per_result = char_weight_per > r
@@ -722,28 +704,31 @@ class ComfyUIAutomation:
 
             if char_weight_per_result:
                 if len(weight_char) > 0:
-                    self.char_name = random_weight_count(weight_char)[0]
+                    name = random_weight_count(weight_char)[0]
                 else:
                     print.Warn('no WeightChar')
-                    self.char_name = random.choice(char_file_names) if char_file_names else None
+                    name = random.choice(char_file_names) if char_file_names else None
             else:
                 sub_char = [x for x in char_file_names if x not in weight_char.keys()]
                 print.Value('SubChar', len(sub_char))
 
                 if len(sub_char) > 0:
-                    self.char_name = random.choice(sub_char)
-                    logger.warning(f'no in WeightChar: {self.char_name}')
+                    name = random.choice(sub_char)
+                    logger.warning(f'no in WeightChar: {name}')
                 else:
                     print.Warn('no SubChar')
-                    self.char_name = random.choice(char_file_names) if char_file_names else None
+                    name = random.choice(char_file_names) if char_file_names else None
 
-            self.char_dic = self.get_now('dicLoraYml', self.char_name, default={})
-            update_dict_key(self.tive_char, self.char_dic, 'positive')
-            update_dict_key(self.tive_char, self.char_dic, 'negative')
-            print.Value('char_name', self.char_name)
-            self.char_path = self.get_now('CharFileDics', self.char_name)
-            print.Value('char_path', self.char_path)
-    
+            if name is None:
+                _apply_selected_char(None, use_wildcard=True)
+            else:
+                _apply_selected_char(name)
+            if self.char_name:
+                print.Value('char_name', self.char_name)
+                print.Value('char_path', self.char_path)
+            return    
+        
+        
     def lora_change(self):
         """LoRA를 선택합니다."""
         # self.no_lora = True
