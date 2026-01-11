@@ -187,7 +187,7 @@ class ComfyUIAutomation:
     
     def _get_safetensors_checkpoint(self, checkpoint_type: str):
         """Checkpoint SafeTensors 파일 목록을 가져옵니다."""
-        checkpoint_path = Path(self.get_config('CheckpointPath'))
+        checkpoint_path = Path(self.get_config('base_dir'),self.get_config('CheckpointPath'))
         base_path = checkpoint_path / checkpoint_type
         
         file_dict, file_list, file_names = get_file_dict_list(base_path, checkpoint_path)
@@ -206,7 +206,7 @@ class ComfyUIAutomation:
     
     def _get_safetensors_char(self, checkpoint_type: str):
         """Char SafeTensors 파일 목록을 가져옵니다."""
-        lora_path = Path(self.get_config('LoraPath'))
+        lora_path = Path(self.get_config('base_dir'),self.get_config('LoraPath'))
         char_path = lora_path / checkpoint_type / self.get_config('LoraCharPath', 'char')
         
         file_dict, file_list, file_names = get_file_dict_list(char_path, lora_path)
@@ -220,7 +220,7 @@ class ComfyUIAutomation:
     
     def _get_safetensors_etc(self, checkpoint_type: str):
         """Etc SafeTensors 파일 목록을 가져옵니다."""
-        lora_path = Path(self.get_config('LoraPath'))
+        lora_path = Path(self.get_config('base_dir'),self.get_config('LoraPath'))
         etc_path = lora_path / checkpoint_type / self.get_config('LoraEtcPath', 'etc')
         
         file_dict, file_list, file_names = get_file_dict_list(etc_path, lora_path)
@@ -1389,17 +1389,17 @@ class ComfyUIAutomation:
             # 파일 감시 시작
             file_observer = FileObserver()
             file_observer.watch(
-                self.get_config('dataPath'),
+                str(Path(self.get_config('dataPath'))),
                 FileEventHandler(self._data_path_callback),
                 recursive=True
             )
             file_observer.watch(
-                self.get_config('CheckpointPath'),
+                str(Path(self.get_config('base_dir'), self.get_config('CheckpointPath'))),
                 FileEventHandler(self._checkpoint_path_callback),
                 recursive=True
             )
             file_observer.watch(
-                self.get_config('LoraPath'),
+                str(Path(self.get_config('base_dir'), self.get_config('LoraPath'))),
                 FileEventHandler(self._lora_path_callback),
                 recursive=True
             )
@@ -1632,11 +1632,11 @@ class ComfyUIAutomation:
         """Checkpoint 경로 변경 콜백"""
         try:
             path = Path(event.src_path)
-            config_path = self.get_config('CheckpointPath')
+            config_path = Path(self.get_config('base_dir'), self.get_config('CheckpointPath'))
             
-            if fnmatch.fnmatch(str(path), str(Path(config_path) / '*.safetensors')):
+            if fnmatch.fnmatch(str(path), str(config_path / '*.safetensors')):
                 print.Value('CheckpointPathCallback', event)
-                rel = path.relative_to(Path(config_path))
+                rel = path.relative_to(config_path)
                 
                 if len(rel.parts) >= 1:
                     r0 = rel.parts[0]
@@ -1672,16 +1672,16 @@ class ComfyUIAutomation:
         """LoRA 경로 변경 콜백"""
         try:
             path = Path(event.src_path)
-            config_path = self.get_config('LoraPath')
+            config_path = Path(self.get_config('base_dir'), self.get_config('LoraPath'))
             
-            if fnmatch.fnmatch(str(path), str(Path(config_path) / '*.ffs_db')) or \
-               fnmatch.fnmatch(str(path), str(Path(config_path) / '*.ffs_lock')) or \
-               fnmatch.fnmatch(str(path), str(Path(config_path) / '*.ffs_tmp')):
+            if fnmatch.fnmatch(str(path), str(config_path / '*.ffs_db')) or \
+               fnmatch.fnmatch(str(path), str(config_path / '*.ffs_lock')) or \
+               fnmatch.fnmatch(str(path), str(config_path / '*.ffs_tmp')):
                 return
             
-            if fnmatch.fnmatch(str(path), str(Path(config_path) / '*.safetensors')):
+            if fnmatch.fnmatch(str(path), str(config_path / '*.safetensors')):
                 print.Value('LoraPathCallback', event)
-                rel = path.relative_to(Path(config_path))
+                rel = path.relative_to(config_path)
                 
                 if len(rel.parts) >= 1:
                     r0 = rel.parts[0]
