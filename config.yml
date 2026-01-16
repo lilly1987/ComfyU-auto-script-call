@@ -40,12 +40,12 @@ CheckpointDbWeightMin: 1 # GetCharKind 에서 DB일 경우 최소 가중치
 
 # --- char 적용 설정 ---
 GetCharKind:
-    Wildcard: 1
+    Wildcard: 111
     DB: 1
-    Weight: 4 # {type}/lora/*.yml , {type}/WeightChar.yml 순으로 찿아서 참조
+    # Weight: 4 # {type}/lora/*.yml , {type}/WeightChar.yml 순으로 찿아서 참조
     Random: 1 # 파일 목록중에서 랜덤 선택
     Cycle: 1
-    Skip: 4
+    # Skip: 4
 
 CharDbWeightMax: 100 # GetCharKind 에서 DB일 경우 최대 가중치
 CharDbWeightMin: 1 # GetCharKind 에서 DB일 경우 최소 가중치
@@ -142,7 +142,7 @@ queue_prompt_wait: true # 큐 대기 여부
 
 # positivePrint: true # tivePrint 출력 여부
 # tivePrint: true # tivePrint 출력 여부
-# WorkflowPrint: true # ComfyUI로 보낼기 직전 workflow_api 출력 여부
+WorkflowPrint: true # ComfyUI로 보낼기 직전 workflow_api 출력 여부
 # sleep: 1 # 루프 간 대기 시간 (초)
 # queue_prompt_wait: false # 큐 대기 여부
 # queue_prompt: false # ComfyUI에 프롬프트 전송 여부

@@ -167,3 +167,34 @@ ComfyUI API 관련 기능을 제공합니다.
 - 기반: ComfyU-auto-script4
 - 최적화 및 재설계 완료
 
+
+dicLoraYml
+
+def char_change(self):
+  if use_wildcard or not name:
+    self.no_char = True
+    self.char_name = 'Wildcard'
+    self.char_dic = {}
+    # self.tive_char = {}
+  else
+    self.no_char = False
+    self.char_name =
+    self.char_path =
+    self.char_dic =
+    # self.tive_char = positive negative
+
+def set_char(self):
+  if self.no_char:
+    self.tive_char = self.get_now('CharWildcard',default= {})
+  else
+    self.tive_char = self.get_now('dicLoraYml', self.char_name, default={})
+
+def set_wildcard(self):
+  def set_tive(self, num_name: str, dic: Dict, reset: bool = False):
+    positive
+    negative
+
+
+def set_wildcard(self):
+  yaml_data = yaml.dump(positive, allow_unicode=True)
+  self.set_workflow('PrimitiveStringMultilineP', 'value', yaml_data)

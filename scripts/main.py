@@ -28,6 +28,8 @@ try:
 except Exception:
     pass
 
+import yaml
+
 # 경로 설정
 script_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(script_dir)
@@ -36,7 +38,7 @@ sys.path.insert(0, parent_dir)
 from utils.config_loader import ConfigLoader
 from utils.yaml_handler import YAMLHandler
 from utils.file_handler import FileEventHandler, FileObserver, get_file_dict_list
-from utils.dict_utils import get_nested, set_nested, set_exists, update_dict, update_dict_key, convert_paths
+from utils.dict_utils import get_nested, set_nested, set_exists, update_dict, update_dict_key, convert_paths, add_exists
 from utils.random_utils import random_weight_count, random_min_max, random_weight, random_dict_weight, seed_int, random_items_count
 from utils.type_utils import get_type_list
 from utils.print_log import print, logger
@@ -601,28 +603,46 @@ class ComfyUIAutomation:
 
         char_file_names = self.get_now('CharFileNames', default=[])
         weight_char = self.get_now('WeightChar', default={})
-        self.tive_char = {}
+        # self.tive_char = {}
         self.char_dic = {}
 
         # helper: 선택된 char 값을 일관되게 적용
         def _apply_selected_char(name: Optional[str], use_wildcard: bool = False):
             if use_wildcard or not name:
                 self.no_char = True
-                self.char_name = 'Wildcard' if use_wildcard else None
-                self.char_path = None
-                self.tive_char = self.get_now('CharWildcard', default={})
+
+                # char_path가 비어있으면 랜덤 파일로 선택
+                char_file_names_final = self.get_now('CharFileNames', default=[])
+                if char_file_names_final:
+                    self.char_name = random.choice(char_file_names_final)
+                    self.char_path = self.get_now('CharFileDics', self.char_name)
+                    self.char_dic = {}
+                    self.char_name = 'Wildcard' if use_wildcard else None
+                    # self.tive_char = {}
+                    # update_dict_key(self.tive_char, self.char_dic, 'positive')
+                    # update_dict_key(self.tive_char, self.char_dic, 'negative')
+                    # print.Value('char_name ', self.char_name)
+                    # print.Value('char_path ', self.char_path)
+                else:
+                    print.Err('CharFileNames가 비어있어 랜덤 선택 불가')
+                    raise ValueError("Char 파일을 찾을 수 없습니다")
+
+                # self.char_path = None
+                # self.tive_char = self.get_now('CharWildcard', default={})
             else:
                 self.no_char = False
                 self.char_name = name
                 self.char_path = self.get_now('CharFileDics', self.char_name)
                 self.char_dic = self.get_now('dicLoraYml', self.char_name, default={})
-                update_dict_key(self.tive_char, self.char_dic, 'positive')
-                update_dict_key(self.tive_char, self.char_dic, 'negative')
+                # update_dict_key(self.tive_char, self.char_dic, 'positive')
+                # update_dict_key(self.tive_char, self.char_dic, 'negative')
 
         # Wildcard: Char 대신 와일드카드 사용
         if selected_kind == 'Wildcard':
             _apply_selected_char(None, use_wildcard=True)
             print.Value('Char Wildcard used')
+            print.Value('char_name (Wildcard)', self.char_name)
+            print.Value('char_path', self.char_path)
             return
 
         # DB: 데이터베이스 기반 선택
@@ -904,6 +924,12 @@ class ComfyUIAutomation:
         """워크플로우에서 값을 가져옵니다."""
         return get_nested(self.workflow_api, node, "inputs", key)
     
+    def add_workflow(self, node: str, key: str, value: Any) -> bool:
+        """워크플로우에 값을 설정합니다."""
+        if self.get_config('AddWorkflowPrint', False):
+            print.Config('AddWorkflow', node, key, value)
+        return add_exists(self.workflow_api, value, node, "inputs", key) is not None
+    
     def set_workflow(self, node: str, key: str, value: Any) -> bool:
         """워크플로우에 값을 설정합니다."""
         if self.get_config('SetWorkflowPrint', False):
@@ -1113,7 +1139,7 @@ class ComfyUIAutomation:
             update_dict(positive, self.positive_dics.get(k, {}))
             update_dict(negative, self.negative_dics.get(k, {}))
         
-        import yaml
+        
         yaml_data = yaml.dump(positive, allow_unicode=True)
         self.set_workflow('PrimitiveStringMultilineP', 'value', yaml_data)
         
@@ -1221,7 +1247,8 @@ class ComfyUIAutomation:
             self.set_workflow(lora_loader_tmp_key, 'seed', seed_int())
             self.set_workflow(lora_loader_tmp_key, 'lora_name', 
                                 self.get_now('LoraFileDics', self.lora_tmp))
-            
+            self.add_workflow('PrimitiveStringMultilineInfo', 'value', self.get_now('LoraFileDics', self.lora_tmp)+" \n")
+
             self.set_workflow_func_random(lora_loader_tmp_key,
                                             ['strength_model', 'strength_clip', 'A', 'B'],
                                             self.set_lora_sub,
@@ -1249,7 +1276,11 @@ class ComfyUIAutomation:
     
     def set_char(self):
         """Char를 설정합니다."""
+        # print.Value('char_name', self.char_name)
+        # print.Value('char_path', self.char_path)
+        # print.Value('no_char', self.no_char)
         self.set_workflow('LoraLoader', 'lora_name', self.char_path)
+        self.add_workflow('PrimitiveStringMultilineInfo', 'value', self.char_path+" \n")
         self.set_workflow('LoraLoader', 'seed', seed_int())
         
         if self.no_char:
@@ -1266,7 +1297,10 @@ class ComfyUIAutomation:
                                           self.set_char_sub,
                                           random_weight)
             self.tive_char = self.get_now('dicLoraYml', self.char_name, default={})
-    
+        # 정상
+        # print.Value('LoraLoader', get_nested(self.workflow_api, 'LoraLoader', "inputs"))
+
+
     def copy_workflow_api(self):
         """워크플로우 API를 복사합니다."""
         workflow_api = self.get_now('workflow_api', default={})

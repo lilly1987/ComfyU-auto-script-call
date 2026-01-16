@@ -29,6 +29,52 @@ def get_nested(d: Dict, *keys, default: Any = None) -> Any:
     
     return default
 
+from typing import Dict, Any
+
+def add_nested(d: Dict, value: Any, *keys) -> Dict:
+    """
+    중첩 딕셔너리에 값을 일반적으로 '추가'합니다.
+    타입에 따라 동작:
+      - 리스트: append
+      - 숫자: 합산
+      - 문자열: 이어붙이기
+      - 딕셔너리: update
+      - 없으면 새로 생성
+    
+    Args:
+        d: 딕셔너리
+        value: 추가할 값
+        *keys: 키 경로
+    
+    Returns:
+        딕셔너리
+    """
+    if not keys:
+        return d
+    
+    temp = d
+    for key in keys[:-1]:
+        temp = temp.setdefault(key, {})
+    
+    last_key = keys[-1]
+    if last_key not in temp:
+        temp[last_key] = value
+    else:
+        existing = temp[last_key]
+        # 타입별 처리
+        if isinstance(existing, list):
+            existing.append(value)
+        elif isinstance(existing, (int, float)) and isinstance(value, (int, float)):
+            temp[last_key] = existing + value
+        elif isinstance(existing, str) and isinstance(value, str):
+            temp[last_key] = existing + value
+        elif isinstance(existing, dict) and isinstance(value, dict):
+            temp[last_key].update(value)
+        else:
+            # 타입이 다르면 리스트로 묶어서 관리
+            temp[last_key] = [existing, value]
+    
+    return d
 
 def set_nested(d: Dict, value: Any, *keys) -> Dict:
     """
@@ -52,6 +98,47 @@ def set_nested(d: Dict, value: Any, *keys) -> Dict:
     temp[keys[-1]] = value
     return d
 
+def add_exists(d: Dict, value: Any, *keys) -> Optional[Dict]:
+    """
+    중첩 딕셔너리에 값을 '추가'합니다 (키가 존재할 때만).
+    타입에 따라 동작:
+      - 리스트: append
+      - 숫자: 합산
+      - 문자열: 이어붙이기
+      - 딕셔너리: update
+      - 다른 타입: 리스트로 묶어서 관리
+    
+    Args:
+        d: 딕셔너리
+        value: 추가할 값
+        *keys: 키 경로
+    
+    Returns:
+        업데이트된 딕셔너리 또는 None
+    """
+    current = d
+    for key in keys[:-1]:
+        current = current.get(key)
+        if current is None or not isinstance(current, dict):
+            return None
+    
+    if keys and keys[-1] in current:
+        existing = current[keys[-1]]
+        # 타입별 처리
+        if isinstance(existing, list):
+            existing.append(value)
+        elif isinstance(existing, (int, float)) and isinstance(value, (int, float)):
+            current[keys[-1]] = existing + value
+        elif isinstance(existing, str) and isinstance(value, str):
+            current[keys[-1]] = existing + value
+        elif isinstance(existing, dict) and isinstance(value, dict):
+            existing.update(value)
+        else:
+            # 타입이 다르면 리스트로 묶어서 관리
+            current[keys[-1]] = [existing, value]
+        return current
+    
+    return None
 
 def set_exists(d: Dict, value: Any, *keys) -> Optional[Dict]:
     """
