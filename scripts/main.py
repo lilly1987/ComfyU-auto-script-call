@@ -1247,7 +1247,7 @@ class ComfyUIAutomation:
             self.set_workflow(lora_loader_tmp_key, 'seed', seed_int())
             self.set_workflow(lora_loader_tmp_key, 'lora_name', 
                                 self.get_now('LoraFileDics', self.lora_tmp))
-            self.add_workflow('PrimitiveStringMultilineInfo', 'value', self.get_now('LoraFileDics', self.lora_tmp)+" \n")
+            self.add_workflow('PrimitiveStringMultilineInfo', 'value', str(self.get_now('LoraFileDics', self.lora_tmp))+" \n")
 
             self.set_workflow_func_random(lora_loader_tmp_key,
                                             ['strength_model', 'strength_clip', 'A', 'B'],
@@ -1280,7 +1280,7 @@ class ComfyUIAutomation:
         # print.Value('char_path', self.char_path)
         # print.Value('no_char', self.no_char)
         self.set_workflow('LoraLoader', 'lora_name', self.char_path)
-        self.add_workflow('PrimitiveStringMultilineInfo', 'value', self.char_path+" \n")
+        self.add_workflow('PrimitiveStringMultilineInfo', 'value', str(self.char_path)+" \n")
         self.set_workflow('LoraLoader', 'seed', seed_int())
         
         if self.no_char:
