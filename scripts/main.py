@@ -1071,17 +1071,17 @@ class ComfyUIAutomation:
         # print.Value("test",self.char_dic.get('skip', False))
 
         if self.char_dic.get('skip', False) :
-            tch = '=' 
+            tch = ' =' 
         elif not self.no_char:
-            tch = '+'
+            tch = ' +'
         else :
             tch = ''
 
         print.Value("test",self.yml_checkpoint.get('skip', False))
         if self.yml_checkpoint.get('skip', False) :
-            tcp = '=' 
+            tcp = ' =' 
         elif self.yml_checkpoint:
-            tcp = '+'
+            tcp = ' +'
         else :
             tcp = ''
         
