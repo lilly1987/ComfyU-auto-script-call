@@ -1203,37 +1203,22 @@ class ComfyUIAutomation:
     def set_lora(self):
         """LoRA를 설정합니다."""
         lora_loader = get_nested(self.workflow_api, 'LoraLoader')
-        lora_loader_next = lora_loader
-        lora_loader_next_key = 'LoraLoader'
-        lora_loader_key = 'LoraLoader'
+        lora_loader_next_key = 'LoraLoader'              
         
-        # ModelSamplingDiscrete가 pass: true인지 확인
         dic_checkpoint_yml = self.get_now('dicCheckpointYml', self.checkpoint_name, default={})
-        model_sampling_discrete_pass = False
-        if isinstance(dic_checkpoint_yml.get('ModelSamplingDiscrete'), dict):
-            if dic_checkpoint_yml.get('ModelSamplingDiscrete', {}).get('pass') is True:
-                model_sampling_discrete_pass = True
-                print.Value('ModelSamplingDiscrete pass: true 감지')
-        
-        model_sampling_discrete = self.get_workflow(lora_loader_next_key, 'model')
-        if isinstance(model_sampling_discrete, list):
-            model_sampling_discrete = model_sampling_discrete[0]
-        
-        checkpoint_loader_simple = self.get_workflow(lora_loader_next_key, 'clip')
-        if isinstance(checkpoint_loader_simple, list):
-            checkpoint_loader_simple = checkpoint_loader_simple[0]
-        
-        # ModelSamplingDiscrete가 pass: true인 경우, model을 CheckpointLoaderSimple로 변경
-        if model_sampling_discrete_pass:
-            model_sampling_discrete = 'CheckpointLoaderSimple'
-            print.Value('model reference changed to CheckpointLoaderSimple')
-        
-        self.tive_lora = {}
-        # if self.SetLoraWildcardEtc:
-        #     update_dict(self.tive_lora, self.get_now('LoraWildcardEtc', default={}))
 
-        # if self.no_lora:
-        #     update_dict(self.tive_lora, self.get_now('LoraWildcard', default={}))
+        if isinstance(dic_checkpoint_yml.get('ModelSamplingDiscrete'), dict):
+            model_sampling = ['ModelSamplingDiscrete',0]
+            print.Value('not use ModelSamplingDiscrete, set to CheckpointLoaderSimple')      
+        else:
+            model_sampling = self.get_workflow(lora_loader_next_key, 'model')
+        
+        if isinstance(dic_checkpoint_yml.get('CLIPSetLastLayer'), dict):
+            clip_simple = ['CLIPSetLastLayer', 0]
+        else:
+            clip_simple = self.get_workflow(lora_loader_next_key, 'clip')
+
+        self.tive_lora = {}
 
         for self.lora_tmp in self.loras_set:
             if self.lora_tmp not in self.get_now('LoraFileNames', default=[]):
@@ -1249,13 +1234,9 @@ class ComfyUIAutomation:
             lora_loader_tmp = copy.deepcopy(lora_loader)
             set_nested(self.workflow_api, lora_loader_tmp, lora_loader_tmp_key)
             
-            model_input = self.get_workflow(lora_loader_tmp_key, 'model')
-            if isinstance(model_input, list):
-                model_input[0] = model_sampling_discrete
+            self.set_workflow(lora_loader_tmp_key, 'model', model_sampling)
             
-            clip_input = self.get_workflow(lora_loader_tmp_key, 'clip')
-            if isinstance(clip_input, list):
-                clip_input[0] = checkpoint_loader_simple
+            self.set_workflow(lora_loader_tmp_key, 'clip',clip_simple)
             
             self.set_workflow(lora_loader_tmp_key, 'seed', seed_int())
             self.set_workflow(lora_loader_tmp_key, 'lora_name', 
@@ -1271,13 +1252,8 @@ class ComfyUIAutomation:
                                             self.set_lora_sub,
                                             random_weight)
             
-            model_input = self.get_workflow(lora_loader_next_key, 'model')
-            if isinstance(model_input, list):
-                model_input[0] = lora_loader_tmp_key
-            
-            clip_input = self.get_workflow(lora_loader_next_key, 'clip')
-            if isinstance(clip_input, list):
-                clip_input[0] = lora_loader_tmp_key
+            self.set_workflow(lora_loader_next_key, 'model', [lora_loader_tmp_key,0])
+            self.set_workflow(lora_loader_next_key, 'clip', [lora_loader_tmp_key,1])
             
             lora_loader_next = lora_loader_tmp
             lora_loader_next_key = lora_loader_tmp_key
