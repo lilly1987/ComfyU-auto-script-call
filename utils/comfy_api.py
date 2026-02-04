@@ -42,8 +42,9 @@ def queue_prompt(prompt: Dict[str, Any], url: str = "http://127.0.0.1:8188/promp
         try:
             request.urlopen(req)
         except HTTPError as e:
+            print.Err('프롬프트 내용:', prompt)
             print.Err('HTTP 오류 코드:', e.code)
-            logger.exception("HTTPError 발생: %s", e)
+            logger.exception("HTTPError 발생: %s, 프롬프트: %s", e, prompt)
             return False
         except URLError as e:
             print.Warn('URL 오류:', e.reason)
