@@ -1166,11 +1166,7 @@ class ComfyUIAutomation:
         self.set_workflow('PrimitiveStringMultilineN', 'value', yaml_data)
         
         lpositive = list(positive.values())
-        lpositive.insert(0, '/**/')
-        lpositive.append('/**/')
         lnegative = list(negative.values())
-        lnegative.insert(0, '/**/')
-        lnegative.append('/**/')
         
         if random_weight(self.get_config("shuffleWildcard", [False, True])):
             if self.get_config("shuffleWildcardPrint", False):
@@ -1181,7 +1177,11 @@ class ComfyUIAutomation:
             if self.get_config("shuffleWildcardPrint", False):
                 print.Config('positive (shuffled)', lpositive)
                 print.Config('negative (shuffled)', lnegative)
-        
+        s=',,,,'
+        lpositive.insert(0, s)
+        lpositive.append(s)
+        lnegative.insert(0, s)
+        lnegative.append(s)
         positive_wildcard = ",".join(lpositive)
         negative_wildcard = ",".join(lnegative)
         
@@ -1237,9 +1237,10 @@ class ComfyUIAutomation:
             dic = self.get_now('dicLoraYml', self.lora_tmp, default={})
             print.Value('SetLora', self.lora_tmp, dic)
             # {'tag': ['style'], 'positive': {'branches': ''}, 'skip': 1, 'weight': 100}
-            if any((s or '').lower() == 'style' for s in dic.get('tag', [])):
+            tags = dic.get('tag', [])
+            if any(isinstance(s, str) and s.strip().lower() == 'style' for s in tags):
                 self.IsStyleLora = True
-            if any((s or '').lower() == 'dress' for s in dic.get('tag', [])):
+            if any(isinstance(s, str) and s.strip().lower() == 'dress' for s in tags):
                 self.IsDressLora = True
             update_dict(self.tive_lora, dic)
             
