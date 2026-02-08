@@ -1090,18 +1090,24 @@ class ComfyUIAutomation:
         else :
             tch = ''
 
-        print.Value("test",self.yml_checkpoint.get('skip', False))
+        # print.Value("test",self.yml_checkpoint.get('skip', False))
         if self.yml_checkpoint.get('skip', False) :
             tcp = '=' 
         elif self.yml_checkpoint:
             tcp = '+'
         else :
             tcp = ''
+
+        tst=''
+        if self.IsStyleLora:
+            tst+='S'       
+        if self.IsDressLora:
+            tst+='D'
         
         ff = (f"{self.checkpoint_type}/"
                f"{self.checkpoint_name}{tcp}/"
                f"{self.char_name}{tch}/"
-               f"{self.checkpoint_name}-{self.char_name}-{len(self.loras_set)}-"
+               f"{self.checkpoint_name}{tcp}-{self.char_name}{tch}-{tst}-{len(self.loras_set)}-"
                f"{time.strftime('%Y%m%d-%H%M%S')}-{self.total}")
         print.Value(ff)
         self.set_workflow('SaveImage1', 'filename_prefix', ff + "-1")
@@ -1219,7 +1225,8 @@ class ComfyUIAutomation:
             clip_simple = self.get_workflow(lora_loader_next_key, 'clip')
 
         self.tive_lora = {}
-
+        self.IsStyleLora = False
+        self.IsDressLora = False
         for self.lora_tmp in self.loras_set:
             if self.lora_tmp not in self.get_now('LoraFileNames', default=[]):
                 print.Warn('SetLora no', self.lora_tmp)
@@ -1228,6 +1235,12 @@ class ComfyUIAutomation:
             self.lora_num += 1
             
             dic = self.get_now('dicLoraYml', self.lora_tmp, default={})
+            print.Value('SetLora', self.lora_tmp, dic)
+            # {'tag': ['style'], 'positive': {'branches': ''}, 'skip': 1, 'weight': 100}
+            if any((s or '').lower() == 'style' for s in dic.get('tag', [])):
+                self.IsStyleLora = True
+            if any((s or '').lower() == 'dress' for s in dic.get('tag', [])):
+                self.IsDressLora = True
             update_dict(self.tive_lora, dic)
             
             lora_loader_tmp_key = f'LoraLoader-{self.lora_tmp}'

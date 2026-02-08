@@ -206,6 +206,10 @@ def update_dict(d: Dict, u: Dict) -> Dict:
     if u is None:
         return d
     
+    if not isinstance(u, dict):
+        raise ValueError(f"업데이트할 객체는 딕셔너리여야 합니다.", u)
+        # return d
+    
     for k, v in u.items():
         if isinstance(v, collections.abc.Mapping):
             d[k] = update_dict(d.get(k, {}), v)
