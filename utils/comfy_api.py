@@ -41,6 +41,7 @@ def queue_prompt(prompt: Dict[str, Any], url: str = "http://127.0.0.1:8188/promp
     while True:
         try:
             request.urlopen(req)
+            return True
         except HTTPError as e:
             print.Err('프롬프트 내용:', prompt)
             print.Err('HTTP 오류 코드:', e.code)
@@ -48,8 +49,12 @@ def queue_prompt(prompt: Dict[str, Any], url: str = "http://127.0.0.1:8188/promp
             return False
         except URLError as e:
             print.Warn('URL 오류:', e.reason)
+            return False
+        except Exception as e:
+            logger.exception("에러 발생:", e)
+            return False
         else:
-            break
+            return False
     
     print("프롬프트 전송 완료")
     return True
@@ -66,40 +71,33 @@ def queue_prompt_wait(url: str = "http://127.0.0.1:8188/prompt", max_queue: int 
     Returns:
         오류 발생 여부
     """
-    try:
-        with Progress() as progress:
-            while True:
-                if progress.finished:
-                    task = progress.add_task("대기 중", total=60)
-                
-                req = request.Request(url)
-                while True:
-                    try:
-                        response = request.urlopen(req)
-                    except HTTPError as e:
-                        progress.stop()
-                        print.Err('HTTP 오류 코드:', e.code)
-                        return True
-                    except URLError as e:
-                        progress.stop()
-                        print.Warn('URL 오류:', e.reason)
-                    else:
+    start_time = time.time()
+
+    with Progress() as progress:
+        # 총 작업량 대신 지난 시간을 표시하는 Task 생성
+        task = progress.add_task("Waiting", total=None)  # total=None → 무한 진행
+
+        while True:
+            try:
+                with request.urlopen(url) as response:
+                    data = json.loads(response.read().decode())
+                    queue_remaining = data["exec_info"]["queue_remaining"]
+
+                    # 지난 시간 계산
+                    elapsed = int(time.time() - start_time)
+                    progress.update(task, description=f"Elapsed: {elapsed}s")
+
+                    if queue_remaining == 0:
                         break
-                
-                html = response.read().decode("utf-8")
-                data = json.loads(html)
-                
-                queue_remaining = data.get('exec_info', {}).get('queue_remaining', 0)
-                
-                if queue_remaining < max_queue:
-                    progress.stop()
-                    break
-                
-                progress.update(task, advance=1)
+
                 time.sleep(1)
-        
-        return False
-    except Exception as e:
-        print.exception(show_locals=True)
-        return True
+                #ConnectionResetError: [WinError 10054] 현재 연결은 원격 호스트에 의해 강제로 끊겼습니다
+            except (URLError, ConnectionRefusedError,ConnectionResetError) as e:
+                # Ignore connection-refused / URLError (e.g., WinError 10061) and keep retrying
+                logger.debug(f"Ignoring connection error, will retry: {e}")
+                time.sleep(1)
+                continue
+            except Exception as e:
+                logger.error("에러 발생:", e)
+                # break
 
