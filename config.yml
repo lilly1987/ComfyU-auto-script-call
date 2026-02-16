@@ -25,7 +25,7 @@ CheckpointLoop: 4 # Checkpoint 반복 횟수. 한번 돌때마다 Char 값이 �
 # CharLoop: [3, 3] # Char 반복 횟수. 한번 돌때마다 Lora 값이 바뀜
 CharLoop: 4 # Char 반복 횟수. 한번 돌때마다 Lora 값이 바뀜
 # queueLoop: [3, 3] # Queue 반복 횟수
-queueLoop: 1 # Queue 반복 횟수
+queueLoop: 2 # Queue 반복 횟수
 
 # --- Checkpoint 적용 설정 ---
 GetCheckpointKind:

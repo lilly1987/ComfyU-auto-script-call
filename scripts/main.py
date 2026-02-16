@@ -46,6 +46,8 @@ from utils.comfy_api import queue_prompt, queue_prompt_wait
 from utils.db_handler import DatabaseHandler
 from watchdog.events import FileSystemEvent
 
+dicLoraYml='dicLoraYml'
+
 # 설정 파일이 없으면 생성
 config_path = Path(parent_dir) / 'config.yml'
 if not config_path.exists():
@@ -262,7 +264,7 @@ class ComfyUIAutomation:
             return []
 
         tags: List[str] = []
-        dic_lora_yml = self.get_now('dicLoraYml', default={})
+        dic_lora_yml = self.get_now(dicLoraYml, default={})
 
         for lora_name in self.loras_set:
             entry = dic_lora_yml.get(lora_name)
@@ -361,7 +363,7 @@ class ComfyUIAutomation:
         
         for key in char_file_names:
             # checkpoint_type을 직접 사용
-            weight = get_nested(self.type_dics, checkpoint_type, 'dicLoraYml', key, 'weight')
+            weight = get_nested(self.type_dics, checkpoint_type, dicLoraYml, key, 'weight')
             if weight:
                 weight_char[key] = weight
             elif key in weight_yml:
@@ -459,10 +461,10 @@ class ComfyUIAutomation:
         dic_lora_yml = self.yaml_handler.merge_yml_files(lora_path, '*.yml')
         
         if self.get_config("loraYmlPrint", False):
-            print.Config('dicLoraYml', checkpoint_type, dict(islice(dic_lora_yml.items(), 3)))
+            print.Config(dicLoraYml, checkpoint_type, dict(islice(dic_lora_yml.items(), 3)))
         
         # init에서 호출될 때는 checkpoint_type을 직접 사용
-        set_nested(self.type_dics, dic_lora_yml, checkpoint_type, 'dicLoraYml')
+        set_nested(self.type_dics, dic_lora_yml, checkpoint_type, dicLoraYml)
     
     def _get_workflow_api(self, checkpoint_type: str):
         """워크플로우 API를 가져옵니다."""
@@ -617,7 +619,7 @@ class ComfyUIAutomation:
         char_file_names = self.get_now('CharFileNames', default=[])
         weight_char = self.get_now('WeightChar', default={})
         # self.tive_char = {}
-        self.char_dic = {}
+        # self.char_dic = {}
 
         # helper: 선택된 char 값을 일관되게 적용
         def _apply_selected_char(name: Optional[str], use_wildcard: bool = False):
@@ -629,7 +631,7 @@ class ComfyUIAutomation:
                 if char_file_names_final:
                     self.char_name = random.choice(char_file_names_final)
                     self.char_path = self.get_now('CharFileDics', self.char_name)
-                    self.char_dic = {}
+                    # self.char_dic = {}
                     self.char_name = 'Wildcard' if use_wildcard else None
                     # self.tive_char = {}
                     # update_dict_key(self.tive_char, self.char_dic, 'positive')
@@ -646,7 +648,7 @@ class ComfyUIAutomation:
                 self.no_char = False
                 self.char_name = name
                 self.char_path = self.get_now('CharFileDics', self.char_name)
-                self.char_dic = self.get_now('dicLoraYml', self.char_name, default={})
+                # self.char_dic = self.get_now(dicLoraYml, self.char_name, default={})
                 # update_dict_key(self.tive_char, self.char_dic, 'positive')
                 # update_dict_key(self.tive_char, self.char_dic, 'negative')
 
@@ -713,7 +715,7 @@ class ComfyUIAutomation:
         # Skip: 'skip' 필드가 False가 아닌 항목들 중 랜덤 선택
         if selected_kind == 'Skip':
             candidates = [cname for cname in char_file_names
-                          if self.get_now('dicLoraYml', cname, default={}).get('skip', False) != False]
+                          if self.get_now(dicLoraYml, cname, default={}).get('skip', False) != False]
 
             print.Value('Skip', len(candidates))
 
@@ -806,7 +808,7 @@ class ComfyUIAutomation:
                     
                     # DB에서 선택된 로라들에 대한 positive/negative 업데이트
                     for lora_name in selected_loras:
-                        lora_dic = self.get_now('dicLoraYml', lora_name, default={})
+                        lora_dic = self.get_now(dicLoraYml, lora_name, default={})
                         update_dict_key(self.tive_weight, lora_dic, 'positive')
                         update_dict_key(self.tive_weight, lora_dic, 'negative')
                     print.Value('lorasSet (from DB)', self.loras_set, f'count={len(selected_loras)}')
@@ -829,7 +831,7 @@ class ComfyUIAutomation:
             # self.no_lora = False
             # Random에서 선택된 로라들에 대한 positive/negative 업데이트
             for lora_name in selected:
-                lora_dic = self.get_now('dicLoraYml', lora_name, default={})
+                lora_dic = self.get_now(dicLoraYml, lora_name, default={})
                 update_dict_key(self.tive_weight, lora_dic, 'positive')
                 update_dict_key(self.tive_weight, lora_dic, 'negative')
             print.Value('lorasSet (Random)', self.loras_set, f'count={len(selected)}')
@@ -851,7 +853,7 @@ class ComfyUIAutomation:
             self.loras_set = set(selected_list)
             # self.no_lora = False
             for lora_name in selected_list:
-                lora_dic = self.get_now('dicLoraYml', lora_name, default={})
+                lora_dic = self.get_now(dicLoraYml, lora_name, default={})
                 update_dict_key(self.tive_weight, lora_dic, 'positive')
                 update_dict_key(self.tive_weight, lora_dic, 'negative')
             print.Value('lorasSet (Cycle)', self.loras_set, f'count={len(selected_list)}')
@@ -1080,10 +1082,10 @@ class ComfyUIAutomation:
     def set_save_image(self):
         """이미지 저장 설정을 합니다."""
         print.Value("checkpoint",self.yml_checkpoint)
-        print.Value("char",self.char_dic)
+        print.Value("char",self.tive_char)
         # print.Value("test",self.char_dic.get('skip', False))
 
-        if self.char_dic.get('skip', False) :
+        if self.tive_char.get('skip', False) :
             tch = '=' 
         elif not self.no_char:
             tch = '+'
@@ -1146,7 +1148,13 @@ class ComfyUIAutomation:
         self.negative_dics = {}
         
         self.set_tive('setup', self.get_now('setupWildcard', default={}), True)
-        self.set_tive('Checkpoint', self.yml_checkpoint, True)
+        self.set_tive('Checkpoint', self.yml_checkpoint, True)        
+        
+        if self.no_char:
+            self.tive_char = self.get_now('CharWildcard',default= {})
+        else:
+            self.tive_char = self.get_now(dicLoraYml, self.char_name, default={})
+
         self.set_tive('Char', self.tive_char, True)
         self.set_tive('Weight', self.tive_weight, True)
         self.set_tive('Lora', self.tive_lora, True)
@@ -1203,7 +1211,7 @@ class ComfyUIAutomation:
     def set_lora_sub(self, k: str) -> Any:
         """LoRA 서브 함수."""
         v = self.get_now('setupWorkflow', 'loraDefault', k)
-        v = self.get_now('dicLoraYml', self.lora_tmp, k, default=v)
+        v = self.get_now(dicLoraYml, self.lora_tmp, k, default=v)
         return v
     
     def set_lora(self):
@@ -1234,7 +1242,7 @@ class ComfyUIAutomation:
             
             self.lora_num += 1
             
-            dic = self.get_now('dicLoraYml', self.lora_tmp, default={})
+            dic = self.get_now(dicLoraYml, self.lora_tmp, default={})
             print.Value('SetLora', self.lora_tmp, dic)
             # {'tag': ['style'], 'positive': {'branches': ''}, 'skip': 1, 'weight': 100}
             tags = dic.get('tag', [])
@@ -1274,7 +1282,7 @@ class ComfyUIAutomation:
     
     def set_char_sub(self, k: str) -> Any:
         """Char 서브 함수."""
-        return self.get_now('dicLoraYml', self.char_name, k,
+        return self.get_now(dicLoraYml, self.char_name, k,
                            default=self.get_now('setupWorkflow', 'charDefault', k))
     
     def set_char(self):
@@ -1289,7 +1297,7 @@ class ComfyUIAutomation:
         if self.no_char:
             self.set_workflow('LoraLoader', 'strength_model', 0.0)
             self.set_workflow('LoraLoader', 'strength_clip', 0.0)
-            self.tive_char = self.get_now('CharWildcard',default= {})
+            # self.tive_char = self.get_now('CharWildcard',default= {})
         else:
             self.set_workflow_func_random('LoraLoader',
                                           ['strength_model', 'strength_clip', 'A', 'B'],
@@ -1299,7 +1307,7 @@ class ComfyUIAutomation:
                                           ['preset', 'block_vector'],
                                           self.set_char_sub,
                                           random_weight)
-            self.tive_char = self.get_now('dicLoraYml', self.char_name, default={})
+            # self.tive_char = self.get_now(dicLoraYml, self.char_name, default={})
         # 정상
         # print.Value('LoraLoader', get_nested(self.workflow_api, 'LoraLoader', "inputs"))
 
@@ -1519,8 +1527,8 @@ class ComfyUIAutomation:
             self.set_dic_checkpoint_yml_to_workflow_api()
             self.set_char()
             self.set_lora()
-            self.set_save_image()
             self.set_wildcard()
+            self.set_save_image()
             
             if self.get_config("WorkflowPrint", False):
                 print.Config('workflow_api', self.workflow_api)            
