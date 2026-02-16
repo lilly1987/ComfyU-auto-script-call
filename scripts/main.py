@@ -444,28 +444,32 @@ class ComfyUIAutomation:
         """Checkpoint YAML 딕셔너리를 가져옵니다."""
         data_path = Path(self.get_config('dataPath'))
         checkpoint_path = data_path / checkpoint_type / 'checkpoint'
-        
-        dic_checkpoint_yml = self.yaml_handler.merge_yml_files(checkpoint_path, '*.yml')
-        
-        if self.get_config("checkpointYmlPrint", False):
-            print.Config('dicCheckpointYml', checkpoint_type, dict(islice(dic_checkpoint_yml.items(), 3)))
-        
-        # init에서 호출될 때는 checkpoint_type을 직접 사용
-        set_nested(self.type_dics, dic_checkpoint_yml, checkpoint_type, 'dicCheckpointYml')
-    
+        try:
+            dic_checkpoint_yml = self.yaml_handler.merge_yml_files(checkpoint_path, '*.yml')
+            
+            if self.get_config("checkpointYmlPrint", False):
+                print.Config('dicCheckpointYml', checkpoint_type, dict(islice(dic_checkpoint_yml.items(), 3)))
+            
+            # init에서 호출될 때는 checkpoint_type을 직접 사용
+            set_nested(self.type_dics, dic_checkpoint_yml, checkpoint_type, 'dicCheckpointYml')
+        except Exception as e:
+            print.Err(f"Checkpoint YML 파일 로드 실패: ",e)
+
     def _get_dic_lora_yml(self, checkpoint_type: str):
         """LoRA YAML 딕셔너리를 가져옵니다."""
         data_path = Path(self.get_config('dataPath'))
         lora_path = data_path / checkpoint_type / 'lora'
-        
-        dic_lora_yml = self.yaml_handler.merge_yml_files(lora_path, '*.yml')
-        
-        if self.get_config("loraYmlPrint", False):
-            print.Config(dicLoraYml, checkpoint_type, dict(islice(dic_lora_yml.items(), 3)))
-        
-        # init에서 호출될 때는 checkpoint_type을 직접 사용
-        set_nested(self.type_dics, dic_lora_yml, checkpoint_type, dicLoraYml)
-    
+        try:
+            dic_lora_yml = self.yaml_handler.merge_yml_files(lora_path, '*.yml')
+            
+            if self.get_config("loraYmlPrint", False):
+                print.Config(dicLoraYml, checkpoint_type, dict(islice(dic_lora_yml.items(), 3)))
+            
+            # init에서 호출될 때는 checkpoint_type을 직접 사용
+            set_nested(self.type_dics, dic_lora_yml, checkpoint_type, dicLoraYml)
+        except Exception as e:
+            print.Err(f"LoRA YML 파일 로드 실패: ",e)
+            
     def _get_workflow_api(self, checkpoint_type: str):
         """워크플로우 API를 가져옵니다."""
         data_path = Path(self.get_config('dataPath'))

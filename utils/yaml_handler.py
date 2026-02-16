@@ -75,14 +75,15 @@ class YAMLHandler:
             YAML 데이터 또는 None
         """
         if not os.path.exists(yml_path):
+            raise FileNotFoundError(f"YML 파일이 존재하지 않습니다: {yml_path}")
             return None
         
-        try:
-            with open(yml_path, 'r', encoding='utf-8') as f:
-                return yaml.safe_load(f)
-        except Exception as e:
-            print(f"  오류: YML 파일 읽기 실패: {e}")
-            return None
+        # try:
+        with open(yml_path, 'r', encoding='utf-8') as f:
+            return yaml.safe_load(f)
+        # except Exception as e:
+        #     print(f"  오류: YML 파일 읽기 실패: {e}")
+        #     return None
     
     @staticmethod
     def merge_yml_files(path: Path, pattern: str = '*.yml') -> Dict[str, Any]:
