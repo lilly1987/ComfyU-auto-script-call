@@ -38,9 +38,13 @@ def queue_prompt(prompt: Dict[str, Any], url: str = "http://127.0.0.1:8188/promp
         print.exception(show_locals=True)
         return False
     
-    while True:
+    max_retries = 10
+    retry_count = 0
+    
+    while retry_count <= max_retries:
         try:
             request.urlopen(req)
+            print("프롬프트 전송 완료")
             return True
         except HTTPError as e:
             print.Err('프롬프트 내용:', prompt)
@@ -48,16 +52,15 @@ def queue_prompt(prompt: Dict[str, Any], url: str = "http://127.0.0.1:8188/promp
             logger.exception("HTTPError 발생: %s, 프롬프트: %s", e, prompt)
             return False
         except URLError as e:
-            print.Warn('URL 오류:', e.reason)
-            return False
+            print.Warn('URL 오류:', e.reason)            
+            print.Warn(f'재시도 중... ({retry_count}/{max_retries})')
+            time.sleep(1)
+
         except Exception as e:
             logger.exception("에러 발생:", e)
             return False
-        else:
-            return False
     
-    print("프롬프트 전송 완료")
-    return True
+    return False
 
 
 def queue_prompt_wait(url: str = "http://127.0.0.1:8188/prompt", max_queue: int = 1) -> bool:

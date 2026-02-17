@@ -517,8 +517,8 @@ class ComfyUIAutomation:
                     print.Warn(f'no safetensorsStart')
                     self.is_first = False
 
-            # GetCheckpointKind 비중 기반 선택 (DB / Weight / Random / Cycle)
-            get_checkpoint_kind = self.get_config('GetCheckpointKind', {'Weight': 1, 'Random': 1, 'DB': 0, 'Cycle': 0})
+            # GetCheckpointKind 비중 기반 선택 (DB / Weight / Random / Cycle / Skip)
+            get_checkpoint_kind = self.get_config('GetCheckpointKind', {'Weight': 1, 'Random': 1, 'DB': 0, 'Cycle': 0, 'Skip': 0})
             selected_kind = random_weight_count(get_checkpoint_kind)[0]
             print.Value('GetCheckpointKind selected', selected_kind)
             
@@ -574,7 +574,28 @@ class ComfyUIAutomation:
                         return
                 else:
                     self.checkpoint_name = random.choice(checkpoint_file_names)
+                    self.checkpoint_path = self.get_now('CheckpointFileDics', self.checkpoint_name)
                     print.Warn('No checkpoint files available for Cycle method. Using random selection')
+            
+            # Skip: 'skip' 필드가 False가 아닌 항목들 중 랜덤 선택
+            if selected_kind == 'Skip':
+                dic_checkpoint_yml = self.get_now('dicCheckpointYml', default={})
+                candidates = [cname for cname in checkpoint_file_names
+                              if dic_checkpoint_yml.get(cname, {}).get('skip', False) != False]
+                
+                print.Value('Skip', len(candidates))
+                
+                if candidates:
+                    self.checkpoint_name = random.choice(candidates)
+                    self.checkpoint_path = self.get_now('CheckpointFileDics', self.checkpoint_name)
+                    print.Value('checkpoint_name (Skip)', self.checkpoint_name)
+                    print.Value('checkpoint_path', self.checkpoint_path)
+                    if self.checkpoint_path:
+                        return
+                
+                # 후보가 없으면 Weight로 처리
+                print.Warn('No checkpoint files matching Skip criteria. Using Weight method')
+                selected_kind = 'Weight'
             
             # Weight: 기존 WeightCheckpoint 기반 선택
             if selected_kind == 'Weight':
@@ -597,6 +618,7 @@ class ComfyUIAutomation:
                     else:
                         self.checkpoint_name = random.choice(checkpoint_file_names)
                         print.Warn('no WeightCheckpoint')
+                self.checkpoint_path = self.get_now('CheckpointFileDics', self.checkpoint_name)
             
             # Random: 파일 목록에서 랜덤 선택
             elif selected_kind == 'Random':
@@ -606,6 +628,8 @@ class ComfyUIAutomation:
             print.Value('checkpoint_name', self.checkpoint_name)
             self.checkpoint_path = self.get_now('CheckpointFileDics', self.checkpoint_name)
             print.Value('checkpoint_path', self.checkpoint_path)
+
+            # 
             
             if self.checkpoint_path:
                 return
