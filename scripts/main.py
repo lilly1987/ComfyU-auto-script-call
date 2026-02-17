@@ -297,16 +297,20 @@ class ComfyUIAutomation:
             checkpoint_types = self.checkpoint_types
         
         for ct in checkpoint_types:
-            setup_wildcard = self.yaml_handler.load_simple(str(data_path / 'setupWildcard.yml')) or {}
-            type_wildcard = self.yaml_handler.load_simple(str(data_path / ct / 'setupWildcard.yml')) or {}
-            
-            update_dict(setup_wildcard, type_wildcard)
-            
-            if self.get_config("setupWildcardPrint", False):
-                print.Config('setupWildcard', ct, setup_wildcard)
-            
-            # init에서 호출될 때는 checkpoint_type을 직접 사용
-            set_nested(self.type_dics, setup_wildcard, ct, 'setupWildcard')
+            try:
+                setup_wildcard = self.yaml_handler.load_simple(str(data_path / 'setupWildcard.yml')) or {}
+                type_wildcard = self.yaml_handler.load_simple(str(data_path / ct / 'setupWildcard.yml')) or {}
+                
+                update_dict(setup_wildcard, type_wildcard)
+                
+                if self.get_config("setupWildcardPrint", False):
+                    print.Config('setupWildcard', ct, setup_wildcard)
+                
+                # init에서 호출될 때는 checkpoint_type을 직접 사용
+                set_nested(self.type_dics, setup_wildcard, ct, 'setupWildcard')
+
+            except Exception as e:
+                print.Err(f"setupWildcard YML 파일 로드 실패: ",e)
     
     def _get_setup_workflow(self, checkpoint_type: str = None):
         """setupWorkflow.yml을 가져옵니다."""
