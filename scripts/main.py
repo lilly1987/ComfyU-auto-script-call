@@ -644,7 +644,7 @@ class ComfyUIAutomation:
     def char_change(self):
         """Char를 선택합니다. (중복 로직을 줄이고 와일드카드 처리를 명확히 함)"""
         # GetCharKind 비중 기반 선택 (Wildcard / DB / Weight / Random)
-        get_char_kind = self.get_config('GetCharKind', {'Wildcard': 1, 'DB': 1, 'Weight': 1, 'Random': 1, 'Cycle': 1, 'Skip': 1})
+        get_char_kind = self.get_config('GetCharKind', {'Wildcard': 1, 'DB': 1, 'Weight': 1, 'Random': 1, 'Cycle': 1, 'Skip': 1, 'Skip_Weight': 1})
         selected_kind = random_weight_count(get_char_kind)[0]
         print.Value('GetCharKind selected', selected_kind)
 
@@ -761,6 +761,25 @@ class ComfyUIAutomation:
                 _apply_selected_char(None, use_wildcard=True)
                 print.Warn('No char files matching Skip criteria. Using CharWildcard')
             return
+
+        if selected_kind == 'Skip_Weight':
+                # Skip_Weight: 'skip' 필드가 False가 아닌 항목들 중 Weight 기반 선택
+                candidates = [cname for cname in char_file_names
+                            if self.get_now(dicLoraYml, cname, default={}).get('skip', False) != False]
+    
+                print.Value('Skip_Weight candidates', len(candidates))
+    
+                if candidates:
+                    weight_skip = {cname: weight_char.get(cname, self.get_config('CharWeightDefault', 150)) for cname in candidates}
+                    name = random_weight_count(weight_skip)[0]
+                    _apply_selected_char(name)
+                    print.Value('char_name (Skip_Weight)', self.char_name)
+                    print.Value('char_path', self.char_path)
+                else:
+                    # 후보가 없으면 와일드카드로 처리
+                    _apply_selected_char(None, use_wildcard=True)
+                    print.Warn('No char files matching Skip criteria. Using CharWildcard')
+                return
 
         # Weight: 기존 WeightChar 기반 선택
         if selected_kind == 'Weight':
