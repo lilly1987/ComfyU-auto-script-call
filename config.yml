@@ -47,7 +47,8 @@ GetCharKind:
     Random: 1 # 파일 목록중에서 랜덤 선택
     Cycle: 1
     Skip: 1
-    Skip_Weight: 3
+    Skip_Weight: 1
+    favorites: 3
 
 CharDbWeightMax: 100 # GetCharKind 에서 DB일 경우 최대 가중치
 CharDbWeightMin: 1 # GetCharKind 에서 DB일 경우 최소 가중치

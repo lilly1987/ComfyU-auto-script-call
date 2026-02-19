@@ -644,7 +644,17 @@ class ComfyUIAutomation:
     def char_change(self):
         """Char를 선택합니다. (중복 로직을 줄이고 와일드카드 처리를 명확히 함)"""
         # GetCharKind 비중 기반 선택 (Wildcard / DB / Weight / Random)
-        get_char_kind = self.get_config('GetCharKind', {'Wildcard': 1, 'DB': 1, 'Weight': 1, 'Random': 1, 'Cycle': 1, 'Skip': 1, 'Skip_Weight': 1})
+        get_char_kind = self.get_config('GetCharKind', 
+                                        {'Wildcard': 1, 
+                                         'DB': 1, 
+                                         'Weight': 1, 
+                                         'Random': 1, 
+                                         'Cycle': 1, 
+                                         'Skip': 1, 
+                                         'Skip_Weight': 1, 
+                                         'Favorites': 1
+                                         }
+                                         )
         selected_kind = random_weight_count(get_char_kind)[0]
         print.Value('GetCharKind selected', selected_kind)
 
@@ -684,6 +694,24 @@ class ComfyUIAutomation:
                 # update_dict_key(self.tive_char, self.char_dic, 'positive')
                 # update_dict_key(self.tive_char, self.char_dic, 'negative')
 
+        # 
+        if selected_kind == 'favorites':
+            candidates = [cname for cname in char_file_names
+                          if self.get_now(dicLoraYml, cname, default={}).get('favorites', None) != None]
+
+            print.Value('Favorites', len(candidates))
+
+            if candidates:
+                name = random.choice(candidates)
+                _apply_selected_char(name)
+                print.Value('char_name (Favorites)', self.char_name)
+                print.Value('char_path', self.char_path)
+            else:
+                # 후보가 없으면 와일드카드로 처리
+                _apply_selected_char(None, use_wildcard=True)
+                print.Warn('No char files matching Favorites criteria. Using CharWildcard')
+            return
+        
         # Wildcard: Char 대신 와일드카드 사용
         if selected_kind == 'Wildcard':
             _apply_selected_char(None, use_wildcard=True)
