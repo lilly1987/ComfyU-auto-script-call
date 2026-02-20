@@ -652,7 +652,8 @@ class ComfyUIAutomation:
                                          'Cycle': 1, 
                                          'Skip': 1, 
                                          'Skip_Weight': 1, 
-                                         'Favorites': 1
+                                         'Favorites': 1,
+                                         'Favorites_Weight': 1,
                                          }
                                          )
         selected_kind = random_weight_count(get_char_kind)[0]
@@ -695,7 +696,7 @@ class ComfyUIAutomation:
                 # update_dict_key(self.tive_char, self.char_dic, 'negative')
 
         # 
-        if selected_kind == 'favorites':
+        if selected_kind == 'Favorites':
             candidates = [cname for cname in char_file_names
                           if self.get_now(dicLoraYml, cname, default={}).get('favorites', None) != None]
 
@@ -705,6 +706,24 @@ class ComfyUIAutomation:
                 name = random.choice(candidates)
                 _apply_selected_char(name)
                 print.Value('char_name (Favorites)', self.char_name)
+                print.Value('char_path', self.char_path)
+            else:
+                # 후보가 없으면 와일드카드로 처리
+                _apply_selected_char(None, use_wildcard=True)
+                print.Warn('No char files matching Favorites criteria. Using CharWildcard')
+            return
+        
+        if selected_kind == 'Favorites_Weight':
+            candidates = [cname for cname in char_file_names
+                          if self.get_now(dicLoraYml, cname, default={}).get('favorites', None) != None]
+
+            print.Value('Favorites_Weight candidates', len(candidates))
+
+            if candidates:                
+                weight_favorites = {cname: weight_char.get(cname, self.get_config('CharWeightDefault', 150)) for cname in candidates}
+                name = random_weight_count(weight_favorites)[0]
+                _apply_selected_char(name)
+                print.Value('char_name (Favorites_Weight)', self.char_name)
                 print.Value('char_path', self.char_path)
             else:
                 # 후보가 없으면 와일드카드로 처리
