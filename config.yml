@@ -49,7 +49,7 @@ GetCharKind:
     Skip: 1
     Skip_Weight: 1
     Favorites: 1
-    Favorites_Weight: 88
+    Favorites_Weight: 8
 
 CharDbWeightMax: 100 # GetCharKind 에서 DB일 경우 최대 가중치
 CharDbWeightMin: 1 # GetCharKind 에서 DB일 경우 최소 가중치
