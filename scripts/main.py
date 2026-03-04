@@ -1198,6 +1198,9 @@ class ComfyUIAutomation:
         else :
             tcp = ''
 
+        cpw=self.yml_checkpoint.get('weight', '')
+        chw=self.tive_char.get('weight', '')
+
         tst=''
         if self.IsStyleLora:
             tst+='S'       
@@ -1205,8 +1208,8 @@ class ComfyUIAutomation:
             tst+='D'
         
         ff = (f"{self.checkpoint_type}/"
-               f"{self.checkpoint_name}{tcp}/"
-               f"{self.char_name}{tch}/"
+               f"{self.checkpoint_name}{tcp}{cpw}/"
+               f"{self.char_name}{tch}{chw}/"
                f"{self.checkpoint_name}{tcp}-{self.char_name}{tch}-{tst}-{len(self.loras_set)}-"
                f"{time.strftime('%Y%m%d-%H%M%S')}-{self.total}")
         print.Value(ff)

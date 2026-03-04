@@ -35,8 +35,8 @@ GetCheckpointKind:
     Cycle: 1
     Skip: 2
 
-CheckpointDbWeight: 50 # GetCharKind 에서 DB일 경우 최대 가중치
-CheckpointDbWeightMax: 100 # GetCharKind 에서 DB일 경우 최대 가중치
+CheckpointDbWeight: 3 # GetCharKind 에서 DB일 경우 최대 가중치
+CheckpointDbWeightMax: 9 # GetCharKind 에서 DB일 경우 최대 가중치
 CheckpointDbWeightMin: 1 # GetCharKind 에서 DB일 경우 최소 가중치
 
 # --- char 적용 설정 ---
@@ -49,9 +49,9 @@ GetCharKind:
     Skip: 1
     Skip_Weight: 1
     Favorites: 1
-    Favorites_Weight: 4
+    Favorites_Weight: 2
 
-CharDbWeightMax: 100 # GetCharKind 에서 DB일 경우 최대 가중치
+CharDbWeightMax: 9 # GetCharKind 에서 DB일 경우 최대 가중치
 CharDbWeightMin: 1 # GetCharKind 에서 DB일 경우 최소 가중치
 
 CharWildcard: # Char 파일을 안쓸 경우 Wildcard 설정
@@ -80,7 +80,7 @@ LoraWildcard: # GetLoraKind 에서 Wildcard 경우
   # negative:
     # Wildcard: ''
 
-LoraDbWeightMax: 100 # GetLoraKind 에서 DB일 경우 최대 가중치
+LoraDbWeightMax: 9 # GetLoraKind 에서 DB일 경우 최대 가중치
 LoraDbWeightMin: 1 # GetLoraKind 에서 DB일 경우 최소 가중치
 LoraDbCnt: [1,2] # GetLoraKind 에서 DB일 경우 DatabaseHandler에서 가져가 쓸 갯수
 
@@ -91,8 +91,8 @@ LoraCycleCnt: [1,2] # GetLoraKind 에서 DB일 경우 DatabaseHandler에서 가�
 # --- Weight 설정 ---
 CheckpointWeightPer: 0.75 # WeightCheckpoint.yml 파일을 쓸 확률
 CharWeightPer: 0.75 # char weight를 쓸 확률. 가중치는 WeightChar.yml 파일과 [dataPath]/[CheckpointType]\lora\*.yml파일의 weight 값을 씀
-CharWeightDefault: 100 # [dataPath]/[CheckpointType]/lora/*.Yml 에 weight 값이 없을 경우 기본값.
-CheckpointWeightDefault: 150 # [dataPath]/[CheckpointType]/checkpoint/*.Yml 에 weight 값이 없을 경우 기본값.
+CharWeightDefault: 3 # [dataPath]/[CheckpointType]/lora/*.Yml 에 weight 값이 없을 경우 기본값.
+CheckpointWeightDefault: 3 # [dataPath]/[CheckpointType]/checkpoint/*.Yml 에 weight 값이 없을 경우 기본값.
 
 # --- 랜덤 설정 ---
 shuffleWildcard: # Wildcard를 섞을 여부. shuffleWildcardPrint이 True일 경우 섞기 전과 후를 출력함
