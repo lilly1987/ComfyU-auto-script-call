@@ -13,13 +13,14 @@ from pathlib import Path
 from typing import Dict, List, Set, Optional, Any
 from itertools import islice, zip_longest
 import threading
+import importlib.util
 
 # 모듈 자동 설치
 try:
     import subprocess
     import importlib.util
     
-    required_modules = ["rich", "watchdog", "ruamel.yaml", "tinydb", "pandas", "openpyxl", "safetensors"]
+    required_modules = []
     
     for module in required_modules:
         if importlib.util.find_spec(module) is None:
@@ -27,6 +28,15 @@ try:
             subprocess.check_call([sys.executable, "-m", "pip", "install", module])
 except Exception:
     pass
+
+required_modules = ["rich", "watchdog", "ruamel.yaml", "tinydb", "pandas", "openpyxl", "safetensors"]
+missing_modules = [module for module in required_modules if importlib.util.find_spec(module) is None]
+
+if missing_modules:
+    print("필수 모듈이 설치되어 있지 않습니다.")
+    print("누락 모듈:", ", ".join(missing_modules))
+    print("먼저 '_run_install.cmd' 또는 'python -m pip install <module>'로 설치해 주세요.")
+    sys.exit(1)
 
 import yaml
 
@@ -110,6 +120,7 @@ class ComfyUIAutomation:
         # 이벤트 디바운스/중복 처리용
         self._recent_events: Dict[str, float] = {}
         self._recent_events_lock = threading.Lock()
+        self._xlsx_export_counter = 0
     
     def get_config(self, key: str, default: Any = None) -> Any:
         """설정 값을 가져옵니다."""
@@ -1535,11 +1546,25 @@ class ComfyUIAutomation:
                 return False
             self._recent_events[key] = now
         return True
+
+    def _maybe_export_db_xlsx(self, force: bool = False):
+        """DB 엑셀 변환을 필요할 때만 수행합니다."""
+        if force:
+            self.db.json_to_xlsx()
+            return
+
+        interval = self.get_config('json_to_xlsx_interval', 0)
+        if not interval:
+            return
+
+        self._xlsx_export_counter += 1
+        if self._xlsx_export_counter >= interval:
+            self.db.json_to_xlsx()
+            self._xlsx_export_counter = 0
     
     def run(self):
         """메인 실행 루프"""
         try:
-            self.config_loader.reload()
             self.init(db=True)
             
             # 파일 감시 시작
@@ -1578,7 +1603,7 @@ class ComfyUIAutomation:
         finally:
             try:
                 self.db.close()
-                self.db.json_to_xlsx()
+                self._maybe_export_db_xlsx(force=True)
             except Exception as e:
                 print.exception(show_locals=True)
             
@@ -1588,9 +1613,6 @@ class ComfyUIAutomation:
     def _loop(self):
         """메인 루프"""
         while True:
-            self.config_loader.reload()
-            self.config = self.config_loader.config
-            
             # 설정 확인
             if self.get_config('수정 안해서 작동 안시킴', False):
                 print.Warn('---------------------------')
@@ -1602,7 +1624,7 @@ class ComfyUIAutomation:
             
             if self.checkpoint_loop_cnt == 0:
                 try:
-                    self.db.json_to_xlsx()
+                    self._maybe_export_db_xlsx()
                 except Exception as e:
                     print.exception(show_locals=True)
                 

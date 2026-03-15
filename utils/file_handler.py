@@ -75,10 +75,13 @@ class FileEventHandler(FileSystemEventHandler):
             return False
         
         current_time = time.time()
-        if not hasattr(self, 'last_event_time') or current_time - self.last_event_time > 1:
-            self.last_event_time = current_time
+        if not hasattr(self, 'last_event_time'):
+            self.last_event_time = 0.0
+        
+        if current_time - self.last_event_time <= 1:
             return True
         
+        self.last_event_time = current_time
         return False
 
 
