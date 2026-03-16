@@ -1434,7 +1434,7 @@ class ComfyUIAutomation:
     
     def update_safetensors(self, path: Path, checkpoint_type: str, event_type: str,
                           config_key: str, dics_key: str, lists_key: str, names_key: str):
-        """SafeTensors 파일 목록을 업데이트합니다."""
+        """SafeTensors 파일 목록을 생성/삭제 이벤트 기준으로 업데이트합니다."""
         # 구성에 저장된 상대 경로를 기준 폴더(base_dir)와 결합하여 절대 경로로 만듭니다.
         config_path = Path(self.get_config('base_dir'), self.get_config(config_key))
         try:
@@ -1452,14 +1452,14 @@ class ComfyUIAutomation:
         file_names = self.get_now(names_key, default=[])
         spath = str(rpath)
         
-        if event_type in ['deleted', 'modified']:
+        if event_type == 'deleted':
             file_dics.pop(name, None)
             if spath in file_lists:
                 file_lists.remove(spath)
             if name in file_names:
                 file_names.remove(name)
         
-        if event_type in ['created', 'modified']:
+        if event_type == 'created':
             file_dics[name] = rpath
             if spath not in file_lists:
                 file_lists.append(spath)
@@ -1832,7 +1832,7 @@ class ComfyUIAutomation:
                                 print.Value('Ignored duplicate event', path, event.event_type)
                             return
 
-                        if event.event_type in ['created', 'modified'] and path.exists():
+                        if event.event_type == 'created' and path.exists():
                             stable = self._wait_for_stable_file(path)
                             if not stable:
                                 if self.get_config('CallbackPrint', False):
@@ -1879,7 +1879,7 @@ class ComfyUIAutomation:
                                     print.Value('Ignored duplicate event', path, event.event_type)
                                 return
 
-                            if event.event_type in ['created', 'modified'] and path.exists():
+                            if event.event_type == 'created' and path.exists():
                                 stable = self._wait_for_stable_file(path)
                                 if not stable:
                                     if self.get_config('CallbackPrint', False):
@@ -1896,7 +1896,7 @@ class ComfyUIAutomation:
                                     print.Value('Ignored duplicate event', path, event.event_type)
                                 return
 
-                            if event.event_type in ['created', 'modified'] and path.exists():
+                            if event.event_type == 'created' and path.exists():
                                 stable = self._wait_for_stable_file(path)
                                 if not stable:
                                     if self.get_config('CallbackPrint', False):
