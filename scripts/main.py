@@ -1859,7 +1859,7 @@ class ComfyUIAutomation:
                 return
             
             if fnmatch.fnmatch(str(path), str(config_path / '*.safetensors')):
-                print.Value('LoraPathCallback', event)
+                # print.Value('LoraPathCallback', event)
                 rel = path.relative_to(config_path)
                 
                 if len(rel.parts) >= 1:
