@@ -1194,7 +1194,7 @@ class ComfyUIAutomation:
         print.Value("char",self.tive_char)
         # print.Value("test",self.char_dic.get('skip', False))
 
-        if self.tive_char.get('skip', False) :
+        if not self.tive_char.get('skip', False) in (False, 'auto', None) :
             tch = '=' 
         elif not self.no_char:
             tch = '+'
@@ -1202,7 +1202,7 @@ class ComfyUIAutomation:
             tch = ''
 
         # print.Value("test",self.yml_checkpoint.get('skip', False))
-        if self.yml_checkpoint.get('skip', False) :
+        if not self.yml_checkpoint.get('skip', False)  in (False, 'auto', None) :
             tcp = '=' 
         elif self.yml_checkpoint:
             tcp = '+'
