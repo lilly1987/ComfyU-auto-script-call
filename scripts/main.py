@@ -1814,6 +1814,11 @@ class ComfyUIAutomation:
             config_path = Path(self.get_config('base_dir'), self.get_config('CheckpointPath'))
             
             if fnmatch.fnmatch(str(path), str(config_path / '*.safetensors')):
+                if event.event_type not in {'created', 'deleted'}:
+                    if self.get_config('CallbackPrint', False):
+                        print.Value('CheckpointPath ignored event', event.event_type, path)
+                    return
+
                 print.Value('CheckpointPathCallback', event)
                 rel = path.relative_to(config_path)
                 
@@ -1859,6 +1864,11 @@ class ComfyUIAutomation:
                 return
             
             if fnmatch.fnmatch(str(path), str(config_path / '*.safetensors')):
+                if event.event_type not in {'created', 'deleted'}:
+                    if self.get_config('CallbackPrint', False):
+                        print.Value('LoraPath ignored event', event.event_type, path)
+                    return
+
                 # print.Value('LoraPathCallback', event)
                 rel = path.relative_to(config_path)
                 
