@@ -1258,8 +1258,8 @@ class ComfyUIAutomation:
         """Wildcard를 설정합니다."""
         self.positive_dics = {}
         self.negative_dics = {}
-        
-        self.set_tive('setup', self.get_now('setupWildcard', default={}), True)
+        if self.yml_checkpoint.get('Setup',True) :
+            self.set_tive('setup', self.get_now('setupWildcard', default={}), True)
         self.set_tive('Checkpoint', self.yml_checkpoint, True)        
         
         if self.no_char:

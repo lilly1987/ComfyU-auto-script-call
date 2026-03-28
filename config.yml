@@ -16,7 +16,7 @@ safetensorsFile: '*.safetensors' # Checkpoint 및 Lora 파일 확장자.
 workflow_api: workflow_api.json # ComfyUI 로 보낼 workflow api 파일. dataPath+CheckpointTypes에 넣음
 url: http://127.0.0.1:8188/prompt # ComfyUI 로 보낼 url. ComfyUI가 실행중이어야 함
 
-# safetensorsStart: 'IL\animepopcute_v30.safetensors'
+# safetensorsStart: 'IL\nattyIllustrious_v20.safetensors'
 
 # --- 반복 설정 ---
 # CheckpointLoop * CharLoop * QueueLoop 횟수만큼 무한 반복
@@ -64,7 +64,7 @@ CharWildcard: # Char 파일을 안쓸 경우 Wildcard 설정
 GetLoraKind:
     Wildcard: 1
     DB: 1
-    Weight: 4 # WeightLora.yml 참조
+    Weight: 8 # WeightLora.yml 참조
     Random: 1 # 파일 목록중에서 랜덤 선택
     Cycle: 1
 
