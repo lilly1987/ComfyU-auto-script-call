@@ -1595,21 +1595,24 @@ class ComfyUIAutomation:
             while True:
                 try:
                     self._loop()
-                except Exception as e:
+                except Exception:
                     logger.exception('Exception')
                     print.exception(show_locals=True)
             
         except KeyboardInterrupt:
             print.Warn('KeyboardInterrupt')
-            logger.exception('KeyboardInterrupt')
-        except Exception as e:
+            logger.info('KeyboardInterrupt')
+        except Exception:
             logger.exception('Exception')
             print.exception(show_locals=True)
         finally:
             try:
+                if 'file_observer' in locals() and file_observer:
+                    file_observer.stop()
+
                 self.db.close()
                 self._maybe_export_db_xlsx(force=True)
-            except Exception as e:
+            except Exception:
                 print.exception(show_locals=True)
             
             print.save_html()
