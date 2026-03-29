@@ -1591,8 +1591,13 @@ class ComfyUIAutomation:
             )
             file_observer.start()
             
-            # 메인 루프
-            self._loop()
+            # 메인 루프            
+            while True:
+                try:
+                    self._loop()
+                except Exception as e:
+                    logger.exception('Exception')
+                    print.exception(show_locals=True)
             
         except KeyboardInterrupt:
             print.Warn('KeyboardInterrupt')
@@ -1612,102 +1617,101 @@ class ComfyUIAutomation:
     
     def _loop(self):
         """메인 루프"""
-        while True:
-            # 설정 확인
-            if self.get_config('수정 안해서 작동 안시킴', False):
-                print.Warn('---------------------------')
-                print.Warn(f'{Path(self.get_config("dataPath"), "config.yml")} 끝까지 보세요')
-                print.Warn('---------------------------')
-                return
+        # 설정 확인
+        if self.get_config('수정 안해서 작동 안시킴', False):
+            print.Warn('---------------------------')
+            print.Warn(f'{Path(self.get_config("dataPath"), "config.yml")} 끝까지 보세요')
+            print.Warn('---------------------------')
+            return
+        
+        self.lora_num = 0
+        
+        if self.checkpoint_loop_cnt == 0:
+            try:
+                self._maybe_export_db_xlsx()
+            except Exception as e:
+                print.exception(show_locals=True)
             
-            self.lora_num = 0
-            
-            if self.checkpoint_loop_cnt == 0:
-                try:
-                    self._maybe_export_db_xlsx()
-                except Exception as e:
-                    print.exception(show_locals=True)
-                
-                self.checkpoint_change()
-                self.checkpoint_loop_cnt += 1
-                self.char_loop_cnt = 0
-            
-            self.copy_workflow_api()
-            
-            if self.char_loop_cnt == 0:
-                self.char_change()
-                self.char_loop_cnt += 1
-                self.queue_loop_cnt = 0
-            
-            if self.queue_loop_cnt == 0:
-                self.lora_change()
-                self.queue_loop_cnt += 1
-            
-            # 워크플로우 설정
-            self.set_setup_workflow_to_workflow_api()
-            self.set_checkpoint_loader_simple()
-            self.set_ksampler()
-            self.set_dic_checkpoint_yml_to_workflow_api()
-            self.set_char()
-            self.set_lora()
-            self.set_wildcard()
-            self.set_save_image()
-            
-            if self.get_config("WorkflowPrint", False):
-                print.Config('workflow_api', self.workflow_api)            
-            
-            if self.get_config("tivePrint", False) or self.get_config("positivePrint", False):
-                print.Config('positivePrint', self.positive_dics)
-            
-            if self.get_config("tivePrint", False) or self.get_config("negativePrint", False):
-                print.Config('negativePrint',  self.negative_dics)
-            
-            # 루프 최대값 설정
-            self.checkpoint_loop = random_min_max(self.get_config("CheckpointLoop", [1, 1]))
-            self.char_loop = random_min_max(self.get_config("CharLoop", [1, 1]))
-            self.queue_loop = random_min_max(self.get_config("queueLoop", [1, 1]))
-            
-            self.total += 1
-            elapsed = datetime.timedelta(seconds=(time.time() - self.time_start))
-            
-            print(f"{self.total}, "
-                  f"{self.checkpoint_loop_cnt}/{self.checkpoint_loop}, "
-                  f"{self.char_loop_cnt}/{self.char_loop}, "
-                  f"{self.queue_loop_cnt}/{self.queue_loop}, "
-                  f"{elapsed}, "
-                  f"{self.checkpoint_type}, "
-                  f"{self.checkpoint_name}, "
-                  f"{self.char_name}, "
-                  f"{self.get_workflow('EmptyLatentImage', 'batch_size')}")
-            
-            lora_tags = self._collect_lora_tags()
-            self.db.update(
-                self.checkpoint_type,
-                self.checkpoint_name,
-                self.char_name,
-                self.loras_set,
-                tags=lora_tags,
-            )
-            
-            # 큐에 추가
-            # 정상적으로 보냈을 경우 계속 반복, 실패했을 경우만 종료
-            if not self._queue():
-                pass
-            
-            time.sleep(random_min_max(self.get_config("sleep", 1)))
-            
+            self.checkpoint_change()
+            self.checkpoint_loop_cnt += 1
+            self.char_loop_cnt = 0
+        
+        self.copy_workflow_api()
+        
+        if self.char_loop_cnt == 0:
+            self.char_change()
+            self.char_loop_cnt += 1
+            self.queue_loop_cnt = 0
+        
+        if self.queue_loop_cnt == 0:
+            self.lora_change()
             self.queue_loop_cnt += 1
-            
-            if self.queue_loop_cnt > self.queue_loop:
-                self.queue_loop_cnt = 0
-                self.char_loop_cnt += 1
-            
-            if self.char_loop_cnt > self.char_loop:
-                self.char_loop_cnt = 0
-                self.checkpoint_loop_cnt += 1
-            
-            if self.checkpoint_loop_cnt > self.checkpoint_loop:
-                self.checkpoint_loop_cnt = 0
+        
+        # 워크플로우 설정
+        self.set_setup_workflow_to_workflow_api()
+        self.set_checkpoint_loader_simple()
+        self.set_ksampler()
+        self.set_dic_checkpoint_yml_to_workflow_api()
+        self.set_char()
+        self.set_lora()
+        self.set_wildcard()
+        self.set_save_image()
+        
+        if self.get_config("WorkflowPrint", False):
+            print.Config('workflow_api', self.workflow_api)            
+        
+        if self.get_config("tivePrint", False) or self.get_config("positivePrint", False):
+            print.Config('positivePrint', self.positive_dics)
+        
+        if self.get_config("tivePrint", False) or self.get_config("negativePrint", False):
+            print.Config('negativePrint',  self.negative_dics)
+        
+        # 루프 최대값 설정
+        self.checkpoint_loop = random_min_max(self.get_config("CheckpointLoop", [1, 1]))
+        self.char_loop = random_min_max(self.get_config("CharLoop", [1, 1]))
+        self.queue_loop = random_min_max(self.get_config("queueLoop", [1, 1]))
+        
+        self.total += 1
+        elapsed = datetime.timedelta(seconds=(time.time() - self.time_start))
+        
+        print(f"{self.total}, "
+                f"{self.checkpoint_loop_cnt}/{self.checkpoint_loop}, "
+                f"{self.char_loop_cnt}/{self.char_loop}, "
+                f"{self.queue_loop_cnt}/{self.queue_loop}, "
+                f"{elapsed}, "
+                f"{self.checkpoint_type}, "
+                f"{self.checkpoint_name}, "
+                f"{self.char_name}, "
+                f"{self.get_workflow('EmptyLatentImage', 'batch_size')}")
+        
+        lora_tags = self._collect_lora_tags()
+        self.db.update(
+            self.checkpoint_type,
+            self.checkpoint_name,
+            self.char_name,
+            self.loras_set,
+            tags=lora_tags,
+        )
+        
+        # 큐에 추가
+        # 정상적으로 보냈을 경우 계속 반복, 실패했을 경우만 종료
+        if not self._queue():
+            pass
+        
+        time.sleep(random_min_max(self.get_config("sleep", 1)))
+        
+        self.queue_loop_cnt += 1
+        
+        if self.queue_loop_cnt > self.queue_loop:
+            self.queue_loop_cnt = 0
+            self.char_loop_cnt += 1
+        
+        if self.char_loop_cnt > self.char_loop:
+            self.char_loop_cnt = 0
+            self.checkpoint_loop_cnt += 1
+        
+        if self.checkpoint_loop_cnt > self.checkpoint_loop:
+            self.checkpoint_loop_cnt = 0
     
     def _queue(self) -> bool:
         """
