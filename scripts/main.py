@@ -55,6 +55,8 @@ from utils.print_log import print, logger
 from utils.comfy_api import queue_prompt, queue_prompt_wait
 from utils.db_handler import DatabaseHandler
 from watchdog.events import FileSystemEvent
+from PIL import Image
+import json
 
 dicLoraYml='dicLoraYml'
 
@@ -80,6 +82,7 @@ class ComfyUIAutomation:
         # 타입별 데이터
         self.type_dics: Dict[str, Dict] = {}
         
+        self.selected_kind: Optional[str] = None
         # 현재 선택된 항목
         self.checkpoint_type: Optional[str] = None
         self.checkpoint_name: Optional[str] = None
@@ -88,6 +91,7 @@ class ComfyUIAutomation:
         self.char_path: Optional[str] = None
         self.lora_tmp: Optional[str] = None
         self.no_char = False
+        self.from_img_path: Optional[str] = None
         # self.no_lora = False
         
         # LoRA 및 태그
@@ -496,6 +500,45 @@ class ComfyUIAutomation:
             # init에서 호출될 때는 checkpoint_type을 직접 사용
             set_nested(self.type_dics, workflow_api, checkpoint_type, 'workflow_api')
     
+    def _extract_prompt_from_png(self, image_path: str) -> Optional[Dict]:
+        """PNG 파일의 메타데이터에서 prompt를 추출합니다."""
+        try:
+            img = Image.open(image_path)
+            if hasattr(img, 'info') and 'prompt' in img.info:
+                prompt_json = img.info['prompt']
+                if isinstance(prompt_json, str):
+                    return json.loads(prompt_json)
+                return prompt_json
+        except Exception as e:
+            print.Warn(f'PNG 파일에서 prompt 추출 실패: {image_path}, {e}')
+        return None
+    
+    def _select_from_img(self) -> Optional[str]:
+        """fromImg 폴더에서 랜덤 PNG 파일을 선택합니다."""
+        from_img_dir = self.get_config('fromImg')
+        if not from_img_dir:
+            print.Warn('fromImg 경로가 설정되지 않았습니다')
+            return None
+        
+        try:
+            from_img_path = Path(from_img_dir)
+            if not from_img_path.exists():
+                print.Warn(f'fromImg 경로가 존재하지 않습니다: {from_img_dir}')
+                return None
+            
+            # PNG 파일 목록 가져오기
+            png_files = list(from_img_path.glob('*.png'))
+            if not png_files:
+                print.Warn(f'fromImg 폴더에 PNG 파일이 없습니다: {from_img_dir}')
+                return None
+            
+            # 랜덤 선택
+            selected_file = random.choice(png_files)
+            return str(selected_file)
+        except Exception as e:
+            print.Warn(f'fromImg 파일 선택 실패: {e}')
+            return None
+    
     def checkpoint_change(self):
         """Checkpoint를 선택합니다."""
         checkpoint_types = self.get_config('CheckpointTypes', {})
@@ -528,10 +571,21 @@ class ComfyUIAutomation:
                     print.Warn(f'no safetensorsStart')
                     self.is_first = False
 
-            # GetCheckpointKind 비중 기반 선택 (DB / Weight / Random / Cycle / Skip)
-            get_checkpoint_kind = self.get_config('GetCheckpointKind', {'Weight': 1, 'Random': 1, 'DB': 0, 'Cycle': 0, 'Skip': 0})
-            selected_kind = random_weight_count(get_checkpoint_kind)[0]
-            print.Value('GetCheckpointKind selected', selected_kind)
+            # GetCheckpointKind 비중 기반 선택 (DB / Weight / Random / Cycle / Skip / fromImg)
+            get_checkpoint_kind = self.get_config('GetCheckpointKind', {'Weight': 1, 'Random': 1, 'DB': 0, 'Cycle': 0, 'Skip': 0, 'fromImg': 0})
+            self.selected_kind = random_weight_count(get_checkpoint_kind)[0]
+            print.Value('GetCheckpointKind selected', self.selected_kind)
+            
+            # fromImg: 이미지에서 prompt 추출
+            if self.selected_kind == 'fromImg':
+                from_img_path = self._select_from_img()
+                if from_img_path:
+                    self.from_img_path = from_img_path
+                    print.Value('from_img_path', self.from_img_path)
+                    return
+                else:
+                    print.Warn('fromImg 모드이지만 유효한 이미지를 찾을 수 없습니다. skip합니다.')
+                    return
             
             # 랜덤으로 Checkpoint 타입 선택
             self.checkpoint_type = random_weight_count(checkpoint_types)[0]
@@ -654,6 +708,15 @@ class ComfyUIAutomation:
     
     def char_change(self):
         """Char를 선택합니다. (중복 로직을 줄이고 와일드카드 처리를 명확히 함)"""
+        # fromImg 모드일 때 이미지 재선택
+        if self.selected_kind == 'fromImg':
+            self.from_img_path = self._select_from_img()
+            if self.from_img_path:
+                print.Value('from_img_path (char_change)', self.from_img_path)
+            else:
+                print.Warn('char_change에서 fromImg 이미지 재선택 실패')
+            return
+        
         # GetCharKind 비중 기반 선택 (Wildcard / DB / Weight / Random)
         get_char_kind = self.get_config('GetCharKind', 
                                         {'Wildcard': 1, 
@@ -1641,33 +1704,53 @@ class ComfyUIAutomation:
         
         self.copy_workflow_api()
         
-        if self.char_loop_cnt == 0:
-            self.char_change()
-            self.char_loop_cnt += 1
-            self.queue_loop_cnt = 0
+        # fromImg 모드 처리: 이미지에서 prompt 추출하고 workflow_api 업데이트
+        if self.selected_kind == 'fromImg':
+            prompt_dict = self._extract_prompt_from_png(self.from_img_path)
+            if prompt_dict:
+                self.workflow_api = prompt_dict
+                print.Value('fromImg prompt loaded', self.from_img_path)
+                
+                # seed 값들을 변경
+                for node_id, node_config in self.workflow_api.items():
+                    if isinstance(node_config, dict) and 'inputs' in node_config:
+                        inputs = node_config['inputs']
+                        if isinstance(inputs, dict) and 'seed' in inputs:
+                            inputs['seed'] = seed_int()
+                
+                print.Value('fromImg seeds updated')
+            else:
+                print.Warn(f'fromImg prompt 추출 실패: {self.from_img_path}. skip합니다.')
+                return
+        else:
+            # 일반 모드: 기존 로직
+            if self.char_loop_cnt == 0:
+                self.char_change()
+                self.char_loop_cnt += 1
+                self.queue_loop_cnt = 0
+            
+            if self.queue_loop_cnt == 0:
+                self.lora_change()
+                self.queue_loop_cnt += 1
+            
+            # 워크플로우 설정
+            self.set_setup_workflow_to_workflow_api()
+            self.set_checkpoint_loader_simple()
+            self.set_ksampler()
+            self.set_dic_checkpoint_yml_to_workflow_api()
+            self.set_char()
+            self.set_lora()
+            self.set_wildcard()
+            self.set_save_image()
         
-        if self.queue_loop_cnt == 0:
-            self.lora_change()
-            self.queue_loop_cnt += 1
-        
-        # 워크플로우 설정
-        self.set_setup_workflow_to_workflow_api()
-        self.set_checkpoint_loader_simple()
-        self.set_ksampler()
-        self.set_dic_checkpoint_yml_to_workflow_api()
-        self.set_char()
-        self.set_lora()
-        self.set_wildcard()
-        self.set_save_image()
-        
-        if self.get_config("WorkflowPrint", False):
-            print.Config('workflow_api', self.workflow_api)            
-        
-        if self.get_config("tivePrint", False) or self.get_config("positivePrint", False):
-            print.Config('positivePrint', self.positive_dics)
-        
-        if self.get_config("tivePrint", False) or self.get_config("negativePrint", False):
-            print.Config('negativePrint',  self.negative_dics)
+            if self.get_config("WorkflowPrint", False):
+                print.Config('workflow_api', self.workflow_api)            
+            
+            if self.get_config("tivePrint", False) or self.get_config("positivePrint", False):
+                print.Config('positivePrint', self.positive_dics)
+            
+            if self.get_config("tivePrint", False) or self.get_config("negativePrint", False):
+                print.Config('negativePrint',  self.negative_dics)
         
         # 루프 최대값 설정
         self.checkpoint_loop = random_min_max(self.get_config("CheckpointLoop", [1, 1]))
@@ -1687,14 +1770,15 @@ class ComfyUIAutomation:
                 f"{self.char_name}, "
                 f"{self.get_workflow('EmptyLatentImage', 'batch_size')}")
         
-        lora_tags = self._collect_lora_tags()
-        self.db.update(
-            self.checkpoint_type,
-            self.checkpoint_name,
-            self.char_name,
-            self.loras_set,
-            tags=lora_tags,
-        )
+        if self.selected_kind != 'fromImg':
+            lora_tags = self._collect_lora_tags()
+            self.db.update(
+                self.checkpoint_type,
+                self.checkpoint_name,
+                self.char_name,
+                self.loras_set,
+                tags=lora_tags,
+            )
         
         # 큐에 추가
         # 정상적으로 보냈을 경우 계속 반복, 실패했을 경우만 종료
