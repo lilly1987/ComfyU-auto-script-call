@@ -603,6 +603,49 @@ class ComfyUIAutomation:
             print.Warn(f'Workflow 파일 검증 중 오류: {e}')
             return False
     
+    def _extract_checkpoint_and_char_from_workflow(self, workflow_api: Dict) -> tuple:
+        """Workflow에서 checkpoint_type, checkpoint_name, char_name을 추출합니다."""
+        checkpoint_type = None
+        checkpoint_name = None
+        char_name = None
+        
+        try:
+            for node_id, node_config in workflow_api.items():
+                if not isinstance(node_config, dict) or 'inputs' not in node_config:
+                    continue
+                
+                inputs = node_config['inputs']
+                if not isinstance(inputs, dict):
+                    continue
+                
+                # ckpt_name에서 checkpoint 정보 추출
+                if 'ckpt_name' in inputs and checkpoint_type is None:
+                    ckpt_name = inputs['ckpt_name']
+                    if isinstance(ckpt_name, str):
+                        # "IL\matureBlendXL_v60.safetensors" 형태 분석
+                        parts = ckpt_name.replace('/', '\\').split('\\')
+                        if len(parts) >= 2:
+                            checkpoint_type = parts[0]
+                            checkpoint_name = Path(parts[-1]).stem
+                            print.Value('Extracted from ckpt_name', f'type={checkpoint_type}, name={checkpoint_name}')
+                
+                # lora_name에서 char 정보 추출
+                if 'lora_name' in inputs and char_name is None:
+                    lora_name = inputs['lora_name']
+                    if isinstance(lora_name, str) and 'char' in lora_name.lower():
+                        # "IL\char\xxx.safetensors" 형태 분석
+                        parts = lora_name.replace('/', '\\').split('\\')
+                        if 'char' in parts:
+                            char_idx = parts.index('char')
+                            if char_idx + 1 < len(parts):
+                                char_name = Path(parts[char_idx + 1]).stem
+                                print.Value('Extracted from lora_name (char)', char_name)
+        
+        except Exception as e:
+            print.Warn(f'Workflow에서 checkpoint/char 정보 추출 실패: {e}')
+        
+        return checkpoint_type, checkpoint_name, char_name
+    
     def checkpoint_change(self):
         """Checkpoint를 선택합니다."""
         checkpoint_types = self.get_config('CheckpointTypes', {})
@@ -1779,6 +1822,26 @@ class ComfyUIAutomation:
                 if not self._validate_workflow_files(self.workflow_api):
                     print.Warn(f'Workflow의 파일 검증 실패: {self.from_img_path}. skip합니다.')
                     return
+                
+                # Workflow에서 checkpoint_type, checkpoint_name, char_name 추출
+                checkpoint_type, checkpoint_name, char_name = self._extract_checkpoint_and_char_from_workflow(self.workflow_api)
+                
+                if checkpoint_type:
+                    self.checkpoint_type = checkpoint_type
+                    print.Value('checkpoint_type (fromImg)', self.checkpoint_type)
+                
+                if checkpoint_name:
+                    self.checkpoint_name = checkpoint_name
+                    print.Value('checkpoint_name (fromImg)', self.checkpoint_name)
+                
+                if char_name:
+                    self.char_name = char_name
+                    self.no_char = False
+                    print.Value('char_name (fromImg)', self.char_name)
+                else:
+                    self.char_name = 'fromImg'
+                    self.no_char = True
+                    print.Value('char_name (fromImg)', 'Wildcard - no char specified')
                 
                 # seed 값들을 변경
                 for node_id, node_config in self.workflow_api.items():
