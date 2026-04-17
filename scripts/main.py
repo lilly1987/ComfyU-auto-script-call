@@ -1492,6 +1492,20 @@ class ComfyUIAutomation:
                 self.set_workflow_func_random3(k, l, self.set_dic_checkpoint_yml_to_workflow_api_sub, random_weight)
     
     def set_save_image(self):
+
+        if self.fromImg:
+
+            ff = (f"{self.checkpoint_type}/"
+                f"{self.checkpoint_name}/"
+                f"{self.char_name}/"
+                f"{self.checkpoint_name}-{self.char_name}-"
+                f"{time.strftime('%Y%m%d-%H%M%S')}-{self.total}")
+            print.Value(ff)
+            self.set_workflow('SaveImage1', 'filename_prefix', ff + "-1")
+            self.set_workflow('SaveImage2', 'filename_prefix', ff + "-2")
+            self.set_workflow('SaveVideo', 'filename_prefix', ff )
+            return
+
         """이미지 저장 설정을 합니다."""
         print.Value("checkpoint",self.yml_checkpoint)
         print.Value("char",self.tive_char)
@@ -2031,17 +2045,17 @@ class ComfyUIAutomation:
             self.set_char()
             self.set_lora()
             self.set_wildcard()
-            self.set_save_image()
+        self.set_save_image()
+    
+        if self.get_config("WorkflowPrint", False):
+            print.Config('workflow_api', self.workflow_api)            
         
-            if self.get_config("WorkflowPrint", False):
-                print.Config('workflow_api', self.workflow_api)            
-            
-            if self.get_config("tivePrint", False) or self.get_config("positivePrint", False):
-                print.Config('positivePrint', self.positive_dics)
-            
-            if self.get_config("tivePrint", False) or self.get_config("negativePrint", False):
-                print.Config('negativePrint',  self.negative_dics)
+        if self.get_config("tivePrint", False) or self.get_config("positivePrint", False):
+            print.Config('positivePrint', self.positive_dics)
         
+        if self.get_config("tivePrint", False) or self.get_config("negativePrint", False):
+            print.Config('negativePrint',  self.negative_dics)
+    
         # 루프 최대값 설정
         self.checkpoint_loop = random_min_max(self.get_config("CheckpointLoop", [1, 1]))
         self.char_loop = random_min_max(self.get_config("CharLoop", [1, 1]))
