@@ -2007,6 +2007,13 @@ class ComfyUIAutomation:
         
         if self.char_loop_cnt > self.char_loop:
             self.char_loop_cnt = 0
+            if self.selected_kind == 'fromImg' and self.checkpoint_loop_cnt < self.checkpoint_loop:
+                failed_image = self.from_img_path
+                self.from_img_path = self._select_from_img(exclude={failed_image} if failed_image else None)
+                if self.from_img_path:
+                    print.Value('fromImg image changed on checkpoint_loop increment', failed_image, '->', self.from_img_path)
+                else:
+                    print.Warn('fromImg 새 이미지 선택 실패, 기존 이미지 유지')
             self.checkpoint_loop_cnt += 1
         
         if self.checkpoint_loop_cnt > self.checkpoint_loop:
