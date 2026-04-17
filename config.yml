@@ -15,6 +15,7 @@ LoraCharPath: char # LoraPath 안의 char 폴더. 변경시 재실행 필요. �
 safetensorsFile: '*.safetensors' # Checkpoint 및 Lora 파일 확장자.
 workflow_api: workflow_api.json # ComfyUI 로 보낼 workflow api 파일. dataPath+CheckpointTypes에 넣음
 url: http://127.0.0.1:8188/prompt # ComfyUI 로 보낼 url. ComfyUI가 실행중이어야 함
+url2: http://127.0.0.1:8188/ # ComfyUI 로 보낼 url. ComfyUI가 실행중이어야 함
 
 # safetensorsStart: 'IL\nattyIllustrious_v20.safetensors'
 

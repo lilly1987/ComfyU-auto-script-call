@@ -616,7 +616,7 @@ class ComfyUIAutomation:
 
     def _get_ultralytics_model_list(self) -> List[str]:
         """Ultralytics 모델 목록을 ComfyUI API에서 가져옵니다."""
-        url = self.get_config('url').rstrip('/') + '/models/ultralytics'
+        url = self.get_config('url2').rstrip('/') + '/models/ultralytics'
         try:
             with urllib_request.urlopen(url, timeout=5) as response:
                 data = json.loads(response.read().decode('utf-8'))
@@ -627,6 +627,7 @@ class ComfyUIAutomation:
                         return [str(x) for x in data['models'] if isinstance(x, str)]
                     return [str(x) for x in data.values() if isinstance(x, str)]
         except Exception as e:
+            print.Warn(f'Ultralytics url: {url}')
             print.Warn(f'Ultralytics 모델 목록 조회 실패: {e}')
         return []
 
@@ -660,12 +661,12 @@ class ComfyUIAutomation:
             return False
 
         inputs = node_config['inputs']
-        if not isinstance(inputs, dict) or 'model_name' not in inputs:
-            return False
+        # if not isinstance(inputs, dict) or 'model_name' not in inputs:
+        #     return False
 
         model_name = inputs['model_name']
-        if not isinstance(model_name, str):
-            return False
+        # if not isinstance(model_name, str):
+        #     return False
 
         normalized = model_name.replace('\\', '/').strip().lstrip('/')
         if normalized in model_list:
@@ -673,7 +674,7 @@ class ComfyUIAutomation:
 
         # 기존 파일명과 일치하는 첫 번째 항목만 사용
         name_only = Path(normalized).name
-        matches = [item for item in model_list if Path(item).name == name_only]
+        matches = [Path(item).as_posix() for item in model_list if Path(item).name == name_only]
         if matches:
             inputs['model_name'] = matches[0]
             print.Value('Ultralytics model_name fixed', 'UltralyticsDetectorProvider', model_name, '->', matches[0])
