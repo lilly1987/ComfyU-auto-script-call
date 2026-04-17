@@ -1,0 +1,20 @@
+matplotlib
+ultralytics>=8.3.162
+numpy
+opencv-python-headless
+dill
+segment-anything
+scikit-image
+piexif
+transformers
+scipy
+# git+https://github.com/facebookresearch/sam2
+# main
+gguf>=0.13.0
+# optional - tokenizer
+sentencepiece
+protobuf
+watchdog
+tinydb
+pandas
+openpyxl
