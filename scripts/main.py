@@ -539,6 +539,70 @@ class ComfyUIAutomation:
             print.Warn(f'fromImg 파일 선택 실패: {e}')
             return None
     
+    def _validate_checkpoint_file(self, ckpt_name: str) -> bool:
+        """Checkpoint 파일이 실제로 존재하는지 확인합니다."""
+        try:
+            checkpoint_base_path = Path(self.get_config('base_dir'), self.get_config('CheckpointPath'))
+            checkpoint_file = checkpoint_base_path / ckpt_name
+            exists = checkpoint_file.exists()
+            if not exists:
+                print.Warn(f'Checkpoint 파일이 없습니다: {checkpoint_file}')
+            return exists
+        except Exception as e:
+            print.Warn(f'Checkpoint 파일 검증 실패: {ckpt_name}, {e}')
+            return False
+    
+    def _validate_lora_file(self, lora_name: str) -> bool:
+        """LoRA 파일이 실제로 존재하는지 확인합니다."""
+        try:
+            lora_base_path = Path(self.get_config('base_dir'), self.get_config('LoraPath'))
+            lora_file = lora_base_path / lora_name
+            exists = lora_file.exists()
+            if not exists:
+                print.Warn(f'LoRA 파일이 없습니다: {lora_file}')
+            return exists
+        except Exception as e:
+            print.Warn(f'LoRA 파일 검증 실패: {lora_name}, {e}')
+            return False
+    
+    def _validate_workflow_files(self, workflow_api: Dict) -> bool:
+        """Workflow의 모든 checkpoint와 lora 파일이 존재하는지 확인합니다."""
+        all_valid = True
+        invalid_nodes = []
+        
+        try:
+            for node_id, node_config in workflow_api.items():
+                if not isinstance(node_config, dict) or 'inputs' not in node_config:
+                    continue
+                
+                inputs = node_config['inputs']
+                if not isinstance(inputs, dict):
+                    continue
+                
+                # ckpt_name 검증
+                if 'ckpt_name' in inputs:
+                    ckpt_name = inputs['ckpt_name']
+                    if isinstance(ckpt_name, str) and not self._validate_checkpoint_file(ckpt_name):
+                        print.Warn(f'Node {node_id}: {ckpt_name} 파일이 없습니다')
+                        all_valid = False
+                        invalid_nodes.append(node_id)
+                
+                # lora_name 검증
+                if 'lora_name' in inputs:
+                    lora_name = inputs['lora_name']
+                    if isinstance(lora_name, str) and not self._validate_lora_file(lora_name):
+                        print.Warn(f'Node {node_id}: {lora_name} 파일이 없습니다')
+                        all_valid = False
+                        invalid_nodes.append(node_id)
+            
+            if invalid_nodes:
+                print.Value('Invalid nodes', invalid_nodes)
+            
+            return all_valid
+        except Exception as e:
+            print.Warn(f'Workflow 파일 검증 중 오류: {e}')
+            return False
+    
     def checkpoint_change(self):
         """Checkpoint를 선택합니다."""
         checkpoint_types = self.get_config('CheckpointTypes', {})
@@ -1710,6 +1774,11 @@ class ComfyUIAutomation:
             if prompt_dict:
                 self.workflow_api = prompt_dict
                 print.Value('fromImg prompt loaded', self.from_img_path)
+                
+                # 파일 검증: ckpt_name, lora_name이 실제로 존재하는지 확인
+                if not self._validate_workflow_files(self.workflow_api):
+                    print.Warn(f'Workflow의 파일 검증 실패: {self.from_img_path}. skip합니다.')
+                    return
                 
                 # seed 값들을 변경
                 for node_id, node_config in self.workflow_api.items():
