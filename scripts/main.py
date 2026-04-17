@@ -10,7 +10,8 @@ import random
 import datetime
 import fnmatch
 from pathlib import Path
-from typing import Dict, List, Set, Optional, Any
+from typing import Dict, List, Set, Optional, Any, Tuple
+from urllib import request as urllib_request
 from itertools import islice, zip_longest
 import threading
 import importlib.util
@@ -513,7 +514,7 @@ class ComfyUIAutomation:
             print.Warn(f'PNG 파일에서 prompt 추출 실패: {image_path}, {e}')
         return None
     
-    def _select_from_img(self) -> Optional[str]:
+    def _select_from_img(self, exclude: Optional[Set[str]] = None) -> Optional[str]:
         """fromImg 폴더에서 랜덤 PNG 파일을 선택합니다."""
         from_img_dir = self.get_config('fromImg')
         if not from_img_dir:
@@ -526,11 +527,16 @@ class ComfyUIAutomation:
                 print.Warn(f'fromImg 경로가 존재하지 않습니다: {from_img_dir}')
                 return None
             
+            exclude_set = {str(Path(p)) for p in exclude} if exclude else set()
             # PNG 파일 목록 가져오기
-            png_files = list(from_img_path.glob('*.png'))
+            png_files = [p for p in from_img_path.rglob('*.png') if str(p) not in exclude_set]
             if not png_files:
-                print.Warn(f'fromImg 폴더에 PNG 파일이 없습니다: {from_img_dir}')
-                return None
+                if exclude_set:
+                    print.Warn('fromImg 이미지 후보가 제외되어 전체 후보에서 재선택을 시도합니다.')
+                    png_files = list(from_img_path.rglob('*.png'))
+                if not png_files:
+                    print.Warn(f'fromImg 폴더에 PNG 파일이 없습니다: {from_img_dir}')
+                    return None
             
             # 랜덤 선택
             selected_file = random.choice(png_files)
@@ -602,6 +608,58 @@ class ComfyUIAutomation:
         except Exception as e:
             print.Warn(f'Workflow 파일 검증 중 오류: {e}')
             return False
+
+    def _get_ultralytics_model_list(self) -> List[str]:
+        """Ultralytics 모델 목록을 ComfyUI API에서 가져옵니다."""
+        url = self.get_config('url').rstrip('/') + '/models/ultralytics'
+        try:
+            with urllib_request.urlopen(url, timeout=5) as response:
+                data = json.loads(response.read().decode('utf-8'))
+                if isinstance(data, list):
+                    return [str(x) for x in data if isinstance(x, str)]
+                if isinstance(data, dict):
+                    if 'models' in data and isinstance(data['models'], list):
+                        return [str(x) for x in data['models'] if isinstance(x, str)]
+                    return [str(x) for x in data.values() if isinstance(x, str)]
+        except Exception as e:
+            print.Warn(f'Ultralytics 모델 목록 조회 실패: {e}')
+        return []
+
+    def _sync_ultralytics_model_name(self, workflow_api: Dict) -> bool:
+        """UltralyticsDetectorProvider의 model_name만 현재 위치와 동기화합니다."""
+        if 'UltralyticsDetectorProvider' not in workflow_api:
+            return False
+
+        model_list = self._get_ultralytics_model_list()
+        if not model_list:
+            return False
+
+        node_config = workflow_api.get('UltralyticsDetectorProvider')
+        if not isinstance(node_config, dict) or 'inputs' not in node_config:
+            return False
+
+        inputs = node_config['inputs']
+        if not isinstance(inputs, dict) or 'model_name' not in inputs:
+            return False
+
+        model_name = inputs['model_name']
+        if not isinstance(model_name, str):
+            return False
+
+        normalized = model_name.replace('\\', '/').strip().lstrip('/')
+        if normalized in model_list:
+            return False
+
+        # 기존 파일명과 일치하는 첫 번째 항목만 사용
+        name_only = Path(normalized).name
+        matches = [item for item in model_list if Path(item).name == name_only]
+        if matches:
+            inputs['model_name'] = matches[0]
+            print.Value('Ultralytics model_name fixed', 'UltralyticsDetectorProvider', model_name, '->', matches[0])
+            return True
+
+        print.Warn('Ultralytics model_name을 찾을 수 없음', 'UltralyticsDetectorProvider', model_name)
+        return False
     
     def _extract_checkpoint_and_char_from_workflow(self, workflow_api: Dict) -> tuple:
         """Workflow에서 checkpoint_type, checkpoint_name, char_name을 추출합니다."""
@@ -1813,14 +1871,28 @@ class ComfyUIAutomation:
         
         # fromImg 모드 처리: 이미지에서 prompt 추출하고 workflow_api 업데이트
         if self.selected_kind == 'fromImg':
+            if self.char_loop_cnt == 0:
+                self.char_loop_cnt = 1
+            if self.queue_loop_cnt == 0:
+                self.queue_loop_cnt = 1
+
             prompt_dict = self._extract_prompt_from_png(self.from_img_path)
             if prompt_dict:
                 self.workflow_api = prompt_dict
                 print.Value('fromImg prompt loaded', self.from_img_path)
+
+                # Ultralytics model_name 경로 동기화
+                self._sync_ultralytics_model_name(self.workflow_api)
                 
                 # 파일 검증: ckpt_name, lora_name이 실제로 존재하는지 확인
                 if not self._validate_workflow_files(self.workflow_api):
-                    print.Warn(f'Workflow의 파일 검증 실패: {self.from_img_path}. skip합니다.')
+                    print.Warn(f'Workflow의 파일 검증 실패: {self.from_img_path}. 다른 이미지로 교체합니다.')
+                    failed_image = self.from_img_path
+                    self.from_img_path = self._select_from_img(exclude={failed_image})
+                    if self.from_img_path:
+                        print.Warn(f'fromImg invalid file detected, changed image: {failed_image} -> {self.from_img_path}')
+                    else:
+                        print.Warn('fromImg 대체 이미지가 없습니다. 다음 루프로 이동합니다.')
                     return
                 
                 # Workflow에서 checkpoint_type, checkpoint_name, char_name 추출
@@ -1913,9 +1985,17 @@ class ComfyUIAutomation:
             )
         
         # 큐에 추가
-        # 정상적으로 보냈을 경우 계속 반복, 실패했을 경우만 종료
-        if not self._queue():
-            pass
+        # 정상적으로 보냈을 경우 계속 진행, 실패했을 경우만 종료
+        success, status_code = self._queue()
+        if not success:
+            if self.selected_kind == 'fromImg' and status_code == 400:
+                failed_image = self.from_img_path
+                self.from_img_path = self._select_from_img(exclude={failed_image})
+                if self.from_img_path:
+                    print.Warn(f'fromImg prompt HTTP 400. 다른 이미지로 교체: {failed_image} -> {self.from_img_path}')
+                else:
+                    print.Warn('fromImg 대체 이미지가 없습니다. 다음 루프로 이동합니다.')
+                return
         
         time.sleep(random_min_max(self.get_config("sleep", 1)))
         
@@ -1932,30 +2012,31 @@ class ComfyUIAutomation:
         if self.checkpoint_loop_cnt > self.checkpoint_loop:
             self.checkpoint_loop_cnt = 0
     
-    def _queue(self) -> bool:
+    def _queue(self) -> Tuple[bool, Optional[int]]:
         """
         ComfyUI에 큐를 추가합니다.
         
         Returns:
-            True: 정상적으로 전송됨 (계속 진행)
-            False: 전송 실패 (루프 종료)
+            Tuple[bool, Optional[int]]:
+                success: True이면 정상적으로 전송됨
+                status_code: HTTP 오류 코드가 있을 경우 해당 코드
         """
         if self.get_config("queue_prompt", True):
             # queue_prompt가 성공(True)하면 계속 진행, 실패(False)하면 종료
-            if not queue_prompt(self.workflow_api, url=self.get_config('url')):
-                print.Err("프롬프트 전송 실패 - 루프 종료")
-                return False
+            success, status_code = queue_prompt(self.workflow_api, url=self.get_config('url'))
+            if not success:
+                print.Err("프롬프트 전송 실패", f"HTTP {status_code}" if status_code else "")
+                return False, status_code
         
         if self.get_config("queue_prompt_wait", True):
-            # queue_prompt_wait가 오류(True)면 종료, 정상(False)이면 계속 진행
             if queue_prompt_wait(url=self.get_config('url')):
                 print.Err("큐 대기 중 오류 발생 - 루프 종료")
-                return False
+                return False, None
         else:
             print.Info("queue_prompt_wait 비활성화됨")
         
         # 정상적으로 전송 완료
-        return True
+        return True, None
     
     def _data_path_callback(self, event: FileSystemEvent):
         """데이터 경로 변경 콜백"""

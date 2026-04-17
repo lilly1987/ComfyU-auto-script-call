@@ -4,7 +4,7 @@ ComfyUI API 유틸리티
 """
 import json
 import time
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Tuple
 from urllib import request
 from urllib.error import URLError, HTTPError
 from rich.progress import Progress
@@ -13,7 +13,7 @@ from .dict_utils import convert_paths
 from .print_log import print, logger
 
 
-def queue_prompt(prompt: Dict[str, Any], url: str = "http://127.0.0.1:8188/prompt") -> bool:
+def queue_prompt(prompt: Dict[str, Any], url: str = "http://127.0.0.1:8188/prompt") -> Tuple[bool, Optional[int]]:
     """
     ComfyUI에 프롬프트를 큐에 추가합니다.
     
@@ -22,7 +22,7 @@ def queue_prompt(prompt: Dict[str, Any], url: str = "http://127.0.0.1:8188/promp
         url: ComfyUI API URL
     
     Returns:
-        성공 여부
+        Tuple[bool, Optional[int]]: 성공 여부 및 HTTP 상태 코드
     """
     try:
         p = {"prompt": prompt}
@@ -33,29 +33,29 @@ def queue_prompt(prompt: Dict[str, Any], url: str = "http://127.0.0.1:8188/promp
     except TypeError as e:
         print.exception(show_locals=True)
         print.Err("프롬프트 변환 오류:", prompt)
-        return False
+        return False, None
     except Exception as e:
         print.exception(show_locals=True)
-        return False
+        return False, None
 
     while True:
         try:
             request.urlopen(req)
             print("프롬프트 전송 완료")
-            return True
+            return True, None
         except HTTPError as e:
             print.Err('프롬프트 내용:', prompt)
             print.Err('HTTP 오류 코드:', e.code)
             logger.exception("HTTPError 발생: %s, 프롬프트: %s", e, prompt)
-            return False
+            return False, e.code
         except URLError as e:
             print.Warn('URL 오류:', e.reason)            
             time.sleep(1)
         except Exception as e:
             logger.exception("에러 발생:", e)
-            return False
+            return False, None
     
-    return False
+    return False, None
 
 
 def queue_prompt_wait(url: str = "http://127.0.0.1:8188/prompt", max_queue: int = 1) -> bool:
