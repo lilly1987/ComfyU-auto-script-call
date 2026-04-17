@@ -83,7 +83,7 @@ class ComfyUIAutomation:
         # 타입별 데이터
         self.type_dics: Dict[str, Dict] = {}
         
-        self.selected_kind: Optional[str] = None
+        # self.selected_kind: Optional[str] = None
         # 현재 선택된 항목
         self.checkpoint_type: Optional[str] = None
         self.checkpoint_name: Optional[str] = None
@@ -94,6 +94,11 @@ class ComfyUIAutomation:
         self.no_char = False
         self.from_img_path: Optional[str] = None
         # self.no_lora = False
+        
+        # 선택된 방식
+        self.checkpoint_kind: Optional[str] = None
+        self.char_kind: Optional[str] = None
+        self.lora_kind: Optional[str] = None
         
         # LoRA 및 태그
         self.loras_set: Set[str] = set()
@@ -798,11 +803,12 @@ class ComfyUIAutomation:
 
             # GetCheckpointKind 비중 기반 선택 (DB / Weight / Random / Cycle / Skip / fromImg)
             get_checkpoint_kind = self.get_config('GetCheckpointKind', {'Weight': 1, 'Random': 1, 'DB': 0, 'Cycle': 0, 'Skip': 0, 'fromImg': 0})
-            self.selected_kind = random_weight_count(get_checkpoint_kind)[0]
-            print.Value('GetCheckpointKind selected', self.selected_kind)
+            self.checkpoint_kind = random_weight_count(get_checkpoint_kind)[0]
+            print.Value('GetCheckpointKind selected', self.checkpoint_kind)
             
             # fromImg: 이미지에서 prompt 추출
-            if selected_kind == 'fromImg':
+            self.fromImg=False  
+            if self.checkpoint_kind == 'fromImg':
                 # from_img_path = self._select_from_img()
                 # if from_img_path:
                 #     self.from_img_path = from_img_path
@@ -813,8 +819,12 @@ class ComfyUIAutomation:
                 #     return
                 self.fromImg=True
                 get_checkpoint_kind = self.get_config('GetCheckpointKind', {'Weight': 1, 'Random': 1, 'DB': 0, 'Cycle': 0, 'Skip': 0, 'fromImg': 0})
-                selected_kind = random_weight_count(get_checkpoint_kind)[0]
-                print.Value('GetCheckpointKind selected', selected_kind)
+                get_checkpoint_kind.pop('fromImg', None)
+                if get_checkpoint_kind:
+                    self.checkpoint_kind = random_weight_count(get_checkpoint_kind)[0]
+                else:
+                    self.checkpoint_kind = 'Weight'
+                print.Value('GetCheckpointKind selected', self.checkpoint_kind)
 
             # 랜덤으로 Checkpoint 타입 선택
             self.checkpoint_type = random_weight_count(checkpoint_types)[0]
@@ -829,7 +839,7 @@ class ComfyUIAutomation:
                 raise ValueError(f"Checkpoint 파일이 없습니다: {self.checkpoint_type}")
             
             # DB: 데이터베이스 기반 선택
-            if selected_kind == 'DB':
+            if self.checkpoint_kind == 'DB':
                 if self.db:
                     checkpoint_counts = self.db.get_checkpoint_counts(self.checkpoint_type)
                     checkpoint_db_weight_max = self.get_config('CheckpointDbWeightMax', 100)
@@ -853,10 +863,10 @@ class ComfyUIAutomation:
                 
                 # DB 사용 불가 시 Weight로 처리
                 print.Warn('DB method selected but DB is not available. Using Weight method')
-                selected_kind = 'Weight'
+                self.checkpoint_kind = 'Weight'
             
             # Cycle: 파일 목록을 순환하며 선택
-            if selected_kind == 'Cycle':
+            if self.checkpoint_kind == 'Cycle':
                 checkpoint_file_names = self.get_now('CheckpointFileNames', default=[])
                 selected_checkpoints = self._cycle_sample('CheckpointCyclePool', checkpoint_file_names, 1)
                 if selected_checkpoints:
@@ -872,7 +882,7 @@ class ComfyUIAutomation:
                     print.Warn('No checkpoint files available for Cycle method. Using random selection')
             
             # Skip: 'skip' 필드가 False가 아닌 항목들 중 랜덤 선택
-            if selected_kind == 'Skip':
+            if self.checkpoint_kind == 'Skip':
                 dic_checkpoint_yml = self.get_now('dicCheckpointYml', default={})
                 candidates = [cname for cname in checkpoint_file_names
                               if dic_checkpoint_yml.get(cname, {}).get('skip', False) != False]
@@ -889,10 +899,10 @@ class ComfyUIAutomation:
                 
                 # 후보가 없으면 Weight로 처리
                 print.Warn('No checkpoint files matching Skip criteria. Using Weight method')
-                selected_kind = 'Weight'
+                self.checkpoint_kind = 'Weight'
             
             # Weight: 기존 WeightCheckpoint 기반 선택
-            if selected_kind == 'Weight':
+            if self.checkpoint_kind == 'Weight':
                 checkpoint_weight_per = self.get_config('CheckpointWeightPer', 0.5)
                 checkpoint_weight_per_result = checkpoint_weight_per > random.random()
                 print.Value('CheckpointWeightPer', checkpoint_weight_per, checkpoint_weight_per_result)
@@ -915,7 +925,7 @@ class ComfyUIAutomation:
                 self.checkpoint_path = self.get_now('CheckpointFileDics', self.checkpoint_name)
             
             # Random: 파일 목록에서 랜덤 선택
-            elif selected_kind == 'Random':
+            elif self.checkpoint_kind == 'Random':
                 self.checkpoint_name = random.choice(checkpoint_file_names)
                 print.Value('checkpoint_name (Random)', self.checkpoint_name)
             
@@ -959,8 +969,8 @@ class ComfyUIAutomation:
                                          'Favorites_Weight': 1,
                                          }
                                          )
-        selected_kind = random_weight_count(get_char_kind)[0]
-        print.Value('GetCharKind selected', selected_kind)
+        self.char_kind = random_weight_count(get_char_kind)[0]
+        print.Value('GetCharKind selected', self.char_kind)
 
         char_file_names = self.get_now('CharFileNames', default=[])
         weight_char = self.get_now('WeightChar', default={})
@@ -999,7 +1009,7 @@ class ComfyUIAutomation:
                 # update_dict_key(self.tive_char, self.char_dic, 'negative')
 
         # 
-        if selected_kind == 'Favorites':
+        if self.char_kind == 'Favorites':
             candidates = [cname for cname in char_file_names
                           if self.get_now(dicLoraYml, cname, default={}).get('favorites', None) != None]
 
@@ -1016,7 +1026,7 @@ class ComfyUIAutomation:
                 print.Warn('No char files matching Favorites criteria. Using CharWildcard')
             return
         
-        if selected_kind == 'Favorites_Weight':
+        if self.char_kind == 'Favorites_Weight':
             candidates = [cname for cname in char_file_names
                           if self.get_now(dicLoraYml, cname, default={}).get('favorites', None) != None]
 
@@ -1035,7 +1045,7 @@ class ComfyUIAutomation:
             return
         
         # Wildcard: Char 대신 와일드카드 사용
-        if selected_kind == 'Wildcard':
+        if self.char_kind == 'Wildcard':
             _apply_selected_char(None, use_wildcard=True)
             print.Value('Char Wildcard used')
             print.Value('char_name (Wildcard)', self.char_name)
@@ -1043,7 +1053,7 @@ class ComfyUIAutomation:
             return
 
         # DB: 데이터베이스 기반 선택
-        if selected_kind == 'DB':
+        if self.char_kind == 'DB':
             if self.db:
                 char_counts = self.db.get_char_counts(self.checkpoint_type)
                 char_db_weight_max = self.get_config('CharDbWeightMax', 100)
@@ -1070,7 +1080,7 @@ class ComfyUIAutomation:
             return
 
         # Random: 파일 목록에서 랜덤 선택
-        if selected_kind == 'Random':
+        if self.char_kind == 'Random':
             if char_file_names:
                 name = random.choice(char_file_names)
                 _apply_selected_char(name)
@@ -1082,7 +1092,7 @@ class ComfyUIAutomation:
             return
 
         # Cycle: 파일 목록을 순환하며 선택
-        if selected_kind == 'Cycle':
+        if self.char_kind == 'Cycle':
             selected_chars = self._cycle_sample('CharCyclePool', char_file_names, 1)
             if selected_chars:
                 name = selected_chars[0]
@@ -1095,7 +1105,7 @@ class ComfyUIAutomation:
             return
 
         # Skip: 'skip' 필드가 False가 아닌 항목들 중 랜덤 선택
-        if selected_kind == 'Skip':
+        if self.char_kind == 'Skip':
             candidates = [cname for cname in char_file_names
                           if self.get_now(dicLoraYml, cname, default={}).get('skip', False) != False]
 
@@ -1112,7 +1122,7 @@ class ComfyUIAutomation:
                 print.Warn('No char files matching Skip criteria. Using CharWildcard')
             return
 
-        if selected_kind == 'Skip_Weight':
+        if self.char_kind == 'Skip_Weight':
                 # Skip_Weight: 'skip' 필드가 False가 아닌 항목들 중 Weight 기반 선택
                 candidates = [cname for cname in char_file_names
                             if self.get_now(dicLoraYml, cname, default={}).get('skip', False) != False]
@@ -1132,7 +1142,7 @@ class ComfyUIAutomation:
                 return
 
         # Weight: 기존 WeightChar 기반 선택
-        if selected_kind == 'Weight':
+        if self.char_kind == 'Weight':
             char_weight_per = self.get_config('CharWeightPer', 0.5)
             r = random.random()
             char_weight_per_result = char_weight_per > r
@@ -1172,17 +1182,17 @@ class ComfyUIAutomation:
         self.loras_set = set()
         # GetLoraKind 비중 기반 선택
         get_lora_kind = self.get_config('GetLoraKind', {'Wildcard': 1, 'DB': 1, 'Weight': 1, 'Random': 1, 'Cycle': 1})
-        selected_kind = random_weight_count(get_lora_kind)[0]
-        print.Value('GetLoraKind selected', selected_kind)
+        self.lora_kind = random_weight_count(get_lora_kind)[0]
+        print.Value('GetLoraKind selected', self.lora_kind)
  
         # Wildcard: LoRA 대신 와일드카드 사용
-        if selected_kind in ['DB', 'Random', 'Cycle','Wildcard'] :
+        if self.lora_kind in ['DB', 'Random', 'Cycle','Wildcard'] :
             self.tive_lora = self.get_now('LoraWildcard',default= {})
             print.Value('Lora Wildcard used')
             # return
 
         # DB 방식: 데이터베이스 기반 선택
-        if selected_kind == 'DB':
+        if self.lora_kind == 'DB':
             if self.db:
                 # 데이터베이스에서 사용 횟수 가져오기
                 lora_counts = self.db.get_lora_counts(self.checkpoint_type)
@@ -1219,7 +1229,7 @@ class ComfyUIAutomation:
             return
 
         # Random 방식: 파일 목록에서 랜덤 선택
-        if selected_kind == 'Random':
+        if self.lora_kind == 'Random':
             lora_file_names = self.get_now('LoraFileNames', default=[])
             if not lora_file_names:
                 # self.no_lora = True
@@ -1239,7 +1249,7 @@ class ComfyUIAutomation:
             return
 
         # Cycle 방식: 전체 목록을 순환하며 선택
-        if selected_kind == 'Cycle':
+        if self.lora_kind == 'Cycle':
             lora_file_names = self.get_now('LoraFileNames', default=[])
             if not lora_file_names:
                 # self.no_lora = True
@@ -1261,7 +1271,7 @@ class ComfyUIAutomation:
             return
         
         # Weight 방식: Weight 파일 기반 선택
-        elif selected_kind == 'Weight':
+        elif self.lora_kind == 'Weight':
             # self.no_lora = False
             weight_lora = self.get_now('WeightLora', default={})
             
@@ -1934,7 +1944,7 @@ class ComfyUIAutomation:
         self.copy_workflow_api()
         
         # fromImg 모드 처리: 이미지에서 prompt 추출하고 workflow_api 업데이트
-        if self.fromImg:
+        if self.from_img_path:
             if self.char_loop_cnt == 0:
                 self.char_loop_cnt = 1
             if self.queue_loop_cnt == 0:
@@ -1960,7 +1970,7 @@ class ComfyUIAutomation:
                         print.Warn(f'fromImg invalid file detected, changed image: {failed_image} -> {self.from_img_path}')
                     else:
                         print.Warn('fromImg 대체 이미지가 없습니다. 일반 모드로 전환합니다.')
-                        self.selected_kind = 'Weight'  # 일반 모드로 전환
+                        self.checkpoint_kind = 'Weight'  # 일반 모드로 전환
                     return
                 
                 # Workflow에서 checkpoint_type, checkpoint_name, char_name 추출
@@ -1999,7 +2009,7 @@ class ComfyUIAutomation:
                     print.Warn(f'fromImg prompt 추출 실패로 이미지 교체: {failed_image} -> {self.from_img_path}')
                 else:
                     print.Warn('fromImg 대체 이미지가 없습니다. 일반 모드로 전환합니다.')
-                    self.selected_kind = 'Weight'  # 일반 모드로 전환
+                    self.checkpoint_kind = 'Weight'  # 일반 모드로 전환
                 return
         else:
             # 일반 모드: 기존 로직
@@ -2063,14 +2073,14 @@ class ComfyUIAutomation:
         # 정상적으로 보냈을 경우 계속 진행, 실패했을 경우만 종료
         success, status_code = self._queue()
         if not success:
-            if self.selected_kind == 'fromImg' and status_code == 400:
+            if self.fromImg and status_code == 400:
                 failed_image = self.from_img_path
                 self.from_img_path = self._select_from_img(exclude={failed_image})
                 if self.from_img_path:
                     print.Warn(f'fromImg prompt HTTP 400. 다른 이미지로 교체: {failed_image} -> {self.from_img_path}')
                 else:
                     print.Warn('fromImg 대체 이미지가 없습니다. 일반 모드로 전환합니다.')
-                    self.selected_kind = 'Weight'  # 일반 모드로 전환
+                    self.checkpoint_kind = 'Weight'  # 일반 모드로 전환
                 return
         
         time.sleep(random_min_max(self.get_config("sleep", 1)))
