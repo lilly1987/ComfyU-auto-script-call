@@ -625,6 +625,22 @@ class ComfyUIAutomation:
             print.Warn(f'Ultralytics 모델 목록 조회 실패: {e}')
         return []
 
+    def _get_checkpoints_model_list(self) -> List[str]:
+        """Checkpoint 모델 목록을 ComfyUI API에서 가져옵니다."""
+        url = self.get_config('url').rstrip('/') + '/models/checkpoints'
+        try:
+            with urllib_request.urlopen(url, timeout=5) as response:
+                data = json.loads(response.read().decode('utf-8'))
+                if isinstance(data, list):
+                    return [str(x) for x in data if isinstance(x, str)]
+                if isinstance(data, dict):
+                    if 'models' in data and isinstance(data['models'], list):
+                        return [str(x) for x in data['models'] if isinstance(x, str)]
+                    return [str(x) for x in data.values() if isinstance(x, str)]
+        except Exception as e:
+            print.Warn(f'Checkpoint 모델 목록 조회 실패: {e}')
+        return []
+
     def _sync_ultralytics_model_name(self, workflow_api: Dict) -> bool:
         """UltralyticsDetectorProvider의 model_name만 현재 위치와 동기화합니다."""
         if 'UltralyticsDetectorProvider' not in workflow_api:
@@ -659,6 +675,50 @@ class ComfyUIAutomation:
             return True
 
         print.Warn('Ultralytics model_name을 찾을 수 없음', 'UltralyticsDetectorProvider', model_name)
+        return False
+    
+    def _sync_checkpoint_model_name(self, workflow_api: Dict) -> bool:
+        """CheckpointLoaderSimple의 ckpt_name을 API 목록과 동기화합니다. 없으면 랜덤 선택."""
+        if 'CheckpointLoaderSimple' not in workflow_api:
+            return False
+
+        model_list = self._get_checkpoints_model_list()
+        if not model_list:
+            return False
+
+        node_config = workflow_api.get('CheckpointLoaderSimple')
+        if not isinstance(node_config, dict) or 'inputs' not in node_config:
+            return False
+
+        inputs = node_config['inputs']
+        if not isinstance(inputs, dict) or 'ckpt_name' not in inputs:
+            return False
+
+        ckpt_name = inputs['ckpt_name']
+        if not isinstance(ckpt_name, str):
+            return False
+
+        normalized = ckpt_name.replace('\\', '/').strip().lstrip('/')
+        if normalized in model_list:
+            return True
+
+        # 기존 파일명과 일치하는 첫 번째 항목만 사용
+        name_only = Path(normalized).name
+        matches = [item for item in model_list if Path(item).name == name_only]
+        if matches:
+            inputs['ckpt_name'] = matches[0]
+            print.Value('Checkpoint ckpt_name synced', ckpt_name, '->', matches[0])
+            return True
+
+        # 없으면 랜덤한 Checkpoint 선택
+        checkpoint_file_names = self.get_now('CheckpointFileNames', default=[])
+        if checkpoint_file_names:
+            random_ckpt = random.choice(checkpoint_file_names)
+            inputs['ckpt_name'] = self.get_now('CheckpointFileDics', random_ckpt)
+            print.Warn('Checkpoint ckpt_name not found, using random', ckpt_name, '->', inputs['ckpt_name'])
+            return True
+
+        print.Warn('Checkpoint ckpt_name을 찾을 수 없고 랜덤 선택도 불가', 'CheckpointLoaderSimple', ckpt_name)
         return False
     
     def _extract_checkpoint_and_char_from_workflow(self, workflow_api: Dict) -> tuple:
@@ -742,16 +802,20 @@ class ComfyUIAutomation:
             print.Value('GetCheckpointKind selected', self.selected_kind)
             
             # fromImg: 이미지에서 prompt 추출
-            if self.selected_kind == 'fromImg':
-                from_img_path = self._select_from_img()
-                if from_img_path:
-                    self.from_img_path = from_img_path
-                    print.Value('from_img_path', self.from_img_path)
-                    return
-                else:
-                    print.Warn('fromImg 모드이지만 유효한 이미지를 찾을 수 없습니다. skip합니다.')
-                    return
-            
+            if selected_kind == 'fromImg':
+                # from_img_path = self._select_from_img()
+                # if from_img_path:
+                #     self.from_img_path = from_img_path
+                #     print.Value('from_img_path', self.from_img_path)
+                #     return
+                # else:
+                #     print.Warn('fromImg 모드이지만 유효한 이미지를 찾을 수 없습니다. skip합니다.')
+                #     return
+                self.fromImg=True
+                get_checkpoint_kind = self.get_config('GetCheckpointKind', {'Weight': 1, 'Random': 1, 'DB': 0, 'Cycle': 0, 'Skip': 0, 'fromImg': 0})
+                selected_kind = random_weight_count(get_checkpoint_kind)[0]
+                print.Value('GetCheckpointKind selected', selected_kind)
+
             # 랜덤으로 Checkpoint 타입 선택
             self.checkpoint_type = random_weight_count(checkpoint_types)[0]
             print.Value('checkpoint_type', self.checkpoint_type)
@@ -874,7 +938,7 @@ class ComfyUIAutomation:
     def char_change(self):
         """Char를 선택합니다. (중복 로직을 줄이고 와일드카드 처리를 명확히 함)"""
         # fromImg 모드일 때 이미지 재선택
-        if self.selected_kind == 'fromImg':
+        if self.fromImg:
             self.from_img_path = self._select_from_img()
             if self.from_img_path:
                 print.Value('from_img_path (char_change)', self.from_img_path)
@@ -1870,7 +1934,7 @@ class ComfyUIAutomation:
         self.copy_workflow_api()
         
         # fromImg 모드 처리: 이미지에서 prompt 추출하고 workflow_api 업데이트
-        if self.selected_kind == 'fromImg':
+        if self.fromImg:
             if self.char_loop_cnt == 0:
                 self.char_loop_cnt = 1
             if self.queue_loop_cnt == 0:
@@ -1884,6 +1948,9 @@ class ComfyUIAutomation:
                 # Ultralytics model_name 경로 동기화
                 self._sync_ultralytics_model_name(self.workflow_api)
                 
+                # Checkpoint ckpt_name을 현재 checkpoint_path로 교체
+                self.set_workflow('CheckpointLoaderSimple', 'ckpt_name', self.checkpoint_path)
+                
                 # 파일 검증: ckpt_name, lora_name이 실제로 존재하는지 확인
                 if not self._validate_workflow_files(self.workflow_api):
                     print.Warn(f'Workflow의 파일 검증 실패: {self.from_img_path}. 다른 이미지로 교체합니다.')
@@ -1892,7 +1959,8 @@ class ComfyUIAutomation:
                     if self.from_img_path:
                         print.Warn(f'fromImg invalid file detected, changed image: {failed_image} -> {self.from_img_path}')
                     else:
-                        print.Warn('fromImg 대체 이미지가 없습니다. 다음 루프로 이동합니다.')
+                        print.Warn('fromImg 대체 이미지가 없습니다. 일반 모드로 전환합니다.')
+                        self.selected_kind = 'Weight'  # 일반 모드로 전환
                     return
                 
                 # Workflow에서 checkpoint_type, checkpoint_name, char_name 추출
@@ -1924,7 +1992,14 @@ class ComfyUIAutomation:
                 
                 print.Value('fromImg seeds updated')
             else:
-                print.Warn(f'fromImg prompt 추출 실패: {self.from_img_path}. skip합니다.')
+                print.Warn(f'fromImg prompt 추출 실패: {self.from_img_path}. 다른 이미지로 교체합니다.')
+                failed_image = self.from_img_path
+                self.from_img_path = self._select_from_img(exclude={failed_image})
+                if self.from_img_path:
+                    print.Warn(f'fromImg prompt 추출 실패로 이미지 교체: {failed_image} -> {self.from_img_path}')
+                else:
+                    print.Warn('fromImg 대체 이미지가 없습니다. 일반 모드로 전환합니다.')
+                    self.selected_kind = 'Weight'  # 일반 모드로 전환
                 return
         else:
             # 일반 모드: 기존 로직
@@ -1974,7 +2049,7 @@ class ComfyUIAutomation:
                 f"{self.char_name}, "
                 f"{self.get_workflow('EmptyLatentImage', 'batch_size')}")
         
-        if self.selected_kind != 'fromImg':
+        if not self.fromImg:
             lora_tags = self._collect_lora_tags()
             self.db.update(
                 self.checkpoint_type,
@@ -1994,7 +2069,8 @@ class ComfyUIAutomation:
                 if self.from_img_path:
                     print.Warn(f'fromImg prompt HTTP 400. 다른 이미지로 교체: {failed_image} -> {self.from_img_path}')
                 else:
-                    print.Warn('fromImg 대체 이미지가 없습니다. 다음 루프로 이동합니다.')
+                    print.Warn('fromImg 대체 이미지가 없습니다. 일반 모드로 전환합니다.')
+                    self.selected_kind = 'Weight'  # 일반 모드로 전환
                 return
         
         time.sleep(random_min_max(self.get_config("sleep", 1)))
@@ -2007,11 +2083,13 @@ class ComfyUIAutomation:
         
         if self.char_loop_cnt > self.char_loop:
             self.char_loop_cnt = 0
-            if self.selected_kind == 'fromImg' and self.checkpoint_loop_cnt < self.checkpoint_loop:
+            if self.fromImg and self.checkpoint_loop_cnt < self.checkpoint_loop:
                 failed_image = self.from_img_path
                 self.from_img_path = self._select_from_img(exclude={failed_image} if failed_image else None)
                 if self.from_img_path:
                     print.Value('fromImg image changed on checkpoint_loop increment', failed_image, '->', self.from_img_path)
+                    # 이미지 교체 후 prompt의 Checkpoint를 현재 checkpoint_path로 교체
+                    self.set_workflow('CheckpointLoaderSimple', 'ckpt_name', self.checkpoint_path)
                 else:
                     print.Warn('fromImg 새 이미지 선택 실패, 기존 이미지 유지')
             self.checkpoint_loop_cnt += 1
