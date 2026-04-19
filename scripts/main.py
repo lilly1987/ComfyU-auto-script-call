@@ -947,13 +947,125 @@ class ComfyUIAutomation:
     
     def char_change(self):
         """Char를 선택합니다. (중복 로직을 줄이고 와일드카드 처리를 명확히 함)"""
-        # fromImg 모드일 때 이미지 재선택
+        # fromImg 모드일 때 이미지 선택 및 검증
         if self.fromImg:
-            self.from_img_path = self._select_from_img()
-            if self.from_img_path:
-                print.Value('from_img_path (char_change)', self.from_img_path)
+            # 사용 가능한 이미지 선택
+            img_path = self._select_from_img()
+            if not img_path:
+                print.Warn('fromImg 모드이지만 유효한 이미지를 찾을 수 없습니다.')
+                self.fromImg = False
+                self.checkpoint_kind = 'Weight'  # 일반 모드로 전환
+                return
+            
+            # 메타데이터에서 prompt 추출
+            prompt_dict = self._extract_prompt_from_png(img_path)
+            if not prompt_dict:
+                print.Warn(f'fromImg prompt 추출 실패: {img_path}. 다른 이미지로 교체합니다.')
+                failed_image = img_path
+                img_path = self._select_from_img(exclude={failed_image})
+                if img_path:
+                    prompt_dict = self._extract_prompt_from_png(img_path)
+                    if not prompt_dict:
+                        print.Warn(f'fromImg prompt 추출 재시도 실패: {img_path}. 일반 모드로 전환합니다.')
+                        self.fromImg = False
+                        self.checkpoint_kind = 'Weight'
+                        return
+                else:
+                    print.Warn('fromImg 대체 이미지가 없습니다. 일반 모드로 전환합니다.')
+                    self.fromImg = False
+                    self.checkpoint_kind = 'Weight'
+                    return
+            
+            # CheckpointLoaderSimple 노드 존재 체크
+            if 'CheckpointLoaderSimple' not in prompt_dict:
+                print.Warn(f'fromImg 이미지에 CheckpointLoaderSimple 노드가 없습니다: {img_path}. 다른 이미지로 교체합니다.')
+                failed_image = img_path
+                img_path = self._select_from_img(exclude={failed_image})
+                if img_path:
+                    prompt_dict = self._extract_prompt_from_png(img_path)
+                    if prompt_dict and 'CheckpointLoaderSimple' in prompt_dict:
+                        pass  # 성공
+                    else:
+                        print.Warn(f'fromImg CheckpointLoaderSimple 체크 재시도 실패: {img_path}. 일반 모드로 전환합니다.')
+                        self.fromImg = False
+                        self.checkpoint_kind = 'Weight'
+                        return
+                else:
+                    print.Warn('fromImg 대체 이미지가 없습니다. 일반 모드로 전환합니다.')
+                    self.fromImg = False
+                    self.checkpoint_kind = 'Weight'
+                    return
+            
+            # LoRA 파일 검증
+            all_lora_valid = True
+            for node_id, node_config in prompt_dict.items():
+                if isinstance(node_config, dict) and node_config.get('class_type') == 'LoraLoader':
+                    inputs = node_config.get('inputs', {})
+                    lora_name = inputs.get('lora_name')
+                    if lora_name and isinstance(lora_name, str):
+                        if not self._validate_lora_file(lora_name):
+                            print.Warn(f'fromImg LoRA 파일 검증 실패: {lora_name} in {img_path}')
+                            all_lora_valid = False
+                            break
+            
+            if not all_lora_valid:
+                print.Warn(f'fromImg LoRA 검증 실패: {img_path}. 다른 이미지로 교체합니다.')
+                failed_image = img_path
+                img_path = self._select_from_img(exclude={failed_image})
+                if img_path:
+                    prompt_dict = self._extract_prompt_from_png(img_path)
+                    if prompt_dict:
+                        # LoRA 재검증
+                        all_lora_valid = True
+                        for node_id, node_config in prompt_dict.items():
+                            if isinstance(node_config, dict) and node_config.get('class_type') == 'LoraLoader':
+                                inputs = node_config.get('inputs', {})
+                                lora_name = inputs.get('lora_name')
+                                if lora_name and isinstance(lora_name, str):
+                                    if not self._validate_lora_file(lora_name):
+                                        all_lora_valid = False
+                                        break
+                        if not all_lora_valid:
+                            print.Warn(f'fromImg LoRA 재검증 실패: {img_path}. 일반 모드로 전환합니다.')
+                            self.fromImg = False
+                            self.checkpoint_kind = 'Weight'
+                            return
+                    else:
+                        print.Warn(f'fromImg prompt 재추출 실패: {img_path}. 일반 모드로 전환합니다.')
+                        self.fromImg = False
+                        self.checkpoint_kind = 'Weight'
+                        return
+                else:
+                    print.Warn('fromImg 대체 이미지가 없습니다. 일반 모드로 전환합니다.')
+                    self.fromImg = False
+                    self.checkpoint_kind = 'Weight'
+                    return
+            
+            # 검증 통과: workflow_api 설정
+            self.workflow_api = prompt_dict
+            self.from_img_path = img_path
+            print.Value('fromImg image selected and validated', img_path)
+            
+            # checkpoint_type, checkpoint_name, char_name 추출
+            checkpoint_type, checkpoint_name, char_name = self._extract_checkpoint_and_char_from_workflow(self.workflow_api)
+            
+            if checkpoint_type:
+                self.checkpoint_type = checkpoint_type
+                print.Value('checkpoint_type (fromImg)', self.checkpoint_type)
+            
+            if checkpoint_name:
+                self.checkpoint_name = checkpoint_name
+                print.Value('checkpoint_name (fromImg)', self.checkpoint_name)
+            
+            if char_name:
+                self.char_name = char_name
+                self.no_char = False
+                print.Value('char_name (fromImg)', self.char_name)
             else:
-                print.Warn('char_change에서 fromImg 이미지 재선택 실패')
+                self.char_name = 'fromImg'
+                self.no_char = True
+                print.Value('char_name (fromImg)', 'Wildcard - no char specified')
+            
             return
         
         # GetCharKind 비중 기반 선택 (Wildcard / DB / Weight / Random)
@@ -1176,6 +1288,10 @@ class ComfyUIAutomation:
         
         
     def lora_change(self):
+        
+        if self.fromImg:
+            return
+        
         """LoRA를 선택합니다."""
         # self.no_lora = True
         self.tive_weight = {}
@@ -1431,6 +1547,9 @@ class ComfyUIAutomation:
     def set_checkpoint_loader_simple(self):
         """CheckpointLoaderSimple을 설정합니다."""
         self.set_workflow('CheckpointLoaderSimple', 'ckpt_name', self.checkpoint_path)
+        
+        if self.fromImg:
+            return
         self.yml_checkpoint = self.get_now('dicCheckpointYml', self.checkpoint_name, default={})
     
     def set_ksampler_sub(self, v: Any, k: str) -> Any:
@@ -1448,7 +1567,10 @@ class ComfyUIAutomation:
         l = get_type_list(ksampler_inputs, (str, bool))
         self.set_workflow_func_random2('KSampler', l, random_weight, self.set_ksampler_sub)
     
-    def set_setup_workflow_to_workflow_api(self):
+    def set_setup_workflow_to_workflow_api(self):        
+        if self.fromImg:
+            return
+        
         """워크플로우 API에 setupWorkflow.yml 값을 설정합니다."""
         exclude_nodes = set(self.get_config('excludeNode', []))
         workflow_nodes = set(self.workflow_api.keys()) - exclude_nodes
@@ -1469,6 +1591,9 @@ class ComfyUIAutomation:
         return self.get_now('dicCheckpointYml', self.checkpoint_name, node, k)
     
     def set_dic_checkpoint_yml_to_workflow_api(self):
+        
+        if self.fromImg:
+            return
         """Checkpoint YML을 워크플로우 API에 설정합니다."""
         dic_checkpoint_yml = self.get_now('dicCheckpointYml', self.checkpoint_name, default={})
         
@@ -1571,6 +1696,8 @@ class ComfyUIAutomation:
                 print.Warn(f'SetTive no: {num_name}')
     
     def set_wildcard(self):
+        if self.fromImg:
+            return
         """Wildcard를 설정합니다."""
         self.positive_dics = {}
         self.negative_dics = {}
@@ -1643,6 +1770,9 @@ class ComfyUIAutomation:
         return v
     
     def set_lora(self):
+        
+        if self.fromImg:
+            return
         """LoRA를 설정합니다."""
         lora_loader = get_nested(self.workflow_api, 'LoraLoader')
         lora_loader_next_key = 'LoraLoader'              
@@ -1719,6 +1849,8 @@ class ComfyUIAutomation:
         # print.Value('char_path', self.char_path)
         # print.Value('no_char', self.no_char)
         self.set_workflow('LoraLoader', 'lora_name', self.char_path)
+        if self.fromImg:
+            return
         self.add_workflow('PrimitiveStringMultilineInfo', 'value', str(self.char_path)+" \n")
         self.set_workflow('LoraLoader', 'seed', seed_int())
         
@@ -1741,6 +1873,8 @@ class ComfyUIAutomation:
 
 
     def copy_workflow_api(self):
+        if self.fromImg:
+            return
         """워크플로우 API를 복사합니다."""
         workflow_api = self.get_now('workflow_api', default={})
         if workflow_api:
@@ -1934,6 +2068,23 @@ class ComfyUIAutomation:
             print.save_html()
             print.Info(' === finally === ')
     
+    def set_fromImg(self):
+        """fromImg 모드에서 seed 랜덤화와 ckpt_name 설정을 수행합니다."""
+        # Checkpoint ckpt_name을 현재 checkpoint_path로 교체
+        self.set_workflow('CheckpointLoaderSimple', 'ckpt_name', self.checkpoint_path)
+        
+        # Ultralytics model_name 경로 동기화
+        self._sync_model_names(self.workflow_api)
+        
+        # seed 값들을 변경
+        for node_id, node_config in self.workflow_api.items():
+            if isinstance(node_config, dict) and 'inputs' in node_config:
+                inputs = node_config['inputs']
+                if isinstance(inputs, dict) and 'seed' in inputs:
+                    inputs['seed'] = seed_int()
+        
+        print.Value('fromImg seeds updated and ckpt_name set')
+    
     def _load_and_setup_prompt_from_image(self, img_path: str, log_prefix: str = 'fromImg') -> bool:
         """이미지에서 prompt를 로드하고 설정합니다."""
         prompt_dict = self._extract_prompt_from_png(img_path)
@@ -1990,17 +2141,19 @@ class ComfyUIAutomation:
         
         self.lora_num = 0
         
+        # Checkpoint 변경 (첫번째 루프)
         if self.checkpoint_loop_cnt == 0:
             try:
                 self._maybe_export_db_xlsx()
             except Exception as e:
                 print.exception(show_locals=True)
             
-            self.checkpoint_change()
+            self.checkpoint_change() # self.fromImg 와 파일 이름만
             self.checkpoint_loop_cnt += 1
             self.char_loop_cnt = 0
-        
-        self.copy_workflow_api()
+
+        if not self.fromImg:
+            self.copy_workflow_api()
         
         # 일반 모드: 기존 로직
         if self.char_loop_cnt == 0:
@@ -2011,43 +2164,23 @@ class ComfyUIAutomation:
         if self.queue_loop_cnt == 0:
             self.lora_change()
             self.queue_loop_cnt += 1
-        
-        # 워크플로우 설정
-        self.set_setup_workflow_to_workflow_api()
-        self.set_checkpoint_loader_simple()
-        self.set_ksampler()
-        self.set_dic_checkpoint_yml_to_workflow_api()
-        self.set_char()
-        self.set_lora()
-        self.set_wildcard()
-
-        # fromImg 모드 처리: 이미지에서 prompt 추출하고 workflow_api 업데이트
+     
         if self.fromImg:
-            if self._load_and_setup_prompt_from_image(self.from_img_path):
-                # 파일 검증: ckpt_name, lora_name이 실제로 존재하는지 확인
-                if not self._validate_workflow_files(self.workflow_api):
-                    print.Warn(f'Workflow의 파일 검증 실패: {self.from_img_path}. 다른 이미지로 교체합니다.')
-                    failed_image = self.from_img_path
-                    self.from_img_path = self._select_from_img(exclude={failed_image})
-                    if self.from_img_path:
-                        print.Warn(f'fromImg invalid file detected, changed image: {failed_image} -> {self.from_img_path}')
-                    else:
-                        print.Warn('fromImg 대체 이미지가 없습니다. 일반 모드로 전환합니다.')
-                        self.checkpoint_kind = 'Weight'  # 일반 모드로 전환
-                    return
-            else:
-                print.Warn(f'fromImg prompt 추출 실패: {self.from_img_path}. 다른 이미지로 교체합니다.')
-                failed_image = self.from_img_path
-                self.from_img_path = self._select_from_img(exclude={failed_image})
-                if self.from_img_path:
-                    print.Warn(f'fromImg prompt 추출 실패로 이미지 교체: {failed_image} -> {self.from_img_path}')
-                else:
-                    print.Warn('fromImg 대체 이미지가 없습니다. 일반 모드로 전환합니다.')
-                    self.checkpoint_kind = 'Weight'  # 일반 모드로 전환
-                return
-
-        self.set_save_image()
+            self.set_fromImg()
+        else:
+        # 워크플로우 설정
+            self.set_setup_workflow_to_workflow_api()
+            self.set_checkpoint_loader_simple()
+            self.set_ksampler()
+            self.set_dic_checkpoint_yml_to_workflow_api()
+            self.set_char()
+            self.set_lora()
+            self.set_wildcard()
     
+        # 저장 이미지 설정
+        self.set_save_image()
+        
+        # 디버그 출력
         if self.get_config("WorkflowPrint", False):
             print.Config('workflow_api', self.workflow_api)            
         
@@ -2056,7 +2189,7 @@ class ComfyUIAutomation:
         
         if self.get_config("tivePrint", False) or self.get_config("negativePrint", False):
             print.Config('negativePrint',  self.negative_dics)
-    
+        
         # 루프 최대값 설정
         self.checkpoint_loop = random_min_max(self.get_config("CheckpointLoop", [1, 1]))
         self.char_loop = random_min_max(self.get_config("CharLoop", [1, 1]))
@@ -2075,6 +2208,7 @@ class ComfyUIAutomation:
                 f"{self.char_name}, "
                 f"{self.get_workflow('EmptyLatentImage', 'batch_size')}")
         
+        # DB 업데이트 (fromImg 모드 제외)
         if not self.fromImg:
             lora_tags = self._collect_lora_tags()
             self.db.update(
@@ -2086,7 +2220,6 @@ class ComfyUIAutomation:
             )
         
         # 큐에 추가
-        # 정상적으로 보냈을 경우 계속 진행, 실패했을 경우만 종료
         success, status_code = self._queue()
         if not success:
             if self.fromImg and status_code == 400:
@@ -2096,7 +2229,7 @@ class ComfyUIAutomation:
                     print.Warn(f'fromImg prompt HTTP 400. 다른 이미지로 교체: {failed_image} -> {self.from_img_path}')
                 else:
                     print.Warn('fromImg 대체 이미지가 없습니다. 일반 모드로 전환합니다.')
-                    self.checkpoint_kind = 'Weight'  # 일반 모드로 전환
+                    self.checkpoint_kind = 'Weight'
                 return
         
         time.sleep(random_min_max(self.get_config("sleep", 1)))
@@ -2114,7 +2247,6 @@ class ComfyUIAutomation:
                 self.from_img_path = self._select_from_img(exclude={failed_image} if failed_image else None)
                 if self.from_img_path:
                     print.Value('fromImg image changed on checkpoint_loop increment', failed_image, '->', self.from_img_path)
-                    # 이미지 교체 후 새로운 prompt를 로드
                     if not self._load_and_setup_prompt_from_image(self.from_img_path, 'fromImg increment'):
                         print.Warn('fromImg new prompt load failed')
                 else:
@@ -2123,6 +2255,7 @@ class ComfyUIAutomation:
         
         if self.checkpoint_loop_cnt > self.checkpoint_loop:
             self.checkpoint_loop_cnt = 0
+
     
     def _queue(self) -> Tuple[bool, Optional[int]]:
         """
