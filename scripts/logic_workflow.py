@@ -101,7 +101,7 @@ class WorkflowMixin:
             if 'dress' in tags: self.IsDressLora = True
             update_dict(self.tive_lora, dic)
             
-            tmp_key = f'LoraLoader-{self.lora_num}'
+            tmp_key = f'LoraLoader{self.lora_num}'
             self.workflow_api[tmp_key] = copy.deepcopy(lora_loader_node)
             self.set_exists_workflow(tmp_key, 'model', h_model_conn)
             self.set_exists_workflow(tmp_key, 'clip', h_clip_conn)
