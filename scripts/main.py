@@ -2081,14 +2081,30 @@ class ComfyUIAutomation:
         # Ultralytics model_name 경로 동기화
         self._sync_model_names(self.workflow_api)
         
-        # seed 값들을 변경
+        # seed 값들을 변경 및 LoRA 파라미터 설정
         for node_id, node_config in self.workflow_api.items():
             if isinstance(node_config, dict) and 'inputs' in node_config:
                 inputs = node_config['inputs']
-                if isinstance(inputs, dict) and 'seed' in inputs:
+                if not isinstance(inputs, dict):
+                    continue
+
+                # Seed 처리
+                if 'seed' in inputs:
                     inputs['seed'] = seed_int()
+
+                # LoRA 파라미터 처리 (set_lora 로직 참조)
+                class_type = str(node_config.get('class_type', ''))
+                if class_type.startswith('LoraLoader'):
+                    lora_name_val = inputs.get('lora_name')
+                    if lora_name_val and isinstance(lora_name_val, str):
+                        # set_lora_sub에서 사용하는 self.lora_tmp 설정
+                        self.lora_tmp = Path(lora_name_val).stem
+                        for k in ['strength_model', 'strength_clip', 'A', 'B']:
+                            val = self.set_lora_sub(k)
+                            if val is not None:
+                                inputs[k] = random_min_max(val)
         
-        print.Value('fromImg seeds updated and ckpt_name set')
+        print.Value('fromImg seeds and LoRA parameters updated')
     
     def _load_and_setup_prompt_from_image(self, img_path: str, log_prefix: str = 'fromImg') -> bool:
         """이미지에서 prompt를 로드하고 설정합니다."""
@@ -2490,4 +2506,3 @@ class ComfyUIAutomation:
 if __name__ == '__main__':
     automation = ComfyUIAutomation()
     automation.run()
-
