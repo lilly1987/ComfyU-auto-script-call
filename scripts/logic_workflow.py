@@ -89,7 +89,7 @@ class WorkflowMixin:
     def set_lora(self):
         if self.fromImg:           
             for node_id, node_cfg in self.workflow_api.items():
-                
+                inputs = node_cfg.get('inputs', {})
                 class_type = str(node_cfg.get('class_type', ''))
                 if class_type.startswith('LoraLoader'):
                     lname = inputs.get('lora_name')
