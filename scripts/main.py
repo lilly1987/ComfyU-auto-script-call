@@ -1935,6 +1935,51 @@ class ComfyUIAutomation:
             print.save_html()
             print.Info(' === finally === ')
     
+    def _load_and_setup_prompt_from_image(self, img_path: str, log_prefix: str = 'fromImg') -> bool:
+        """이미지에서 prompt를 로드하고 설정합니다."""
+        prompt_dict = self._extract_prompt_from_png(img_path)
+        if not prompt_dict:
+            return False
+        
+        self.workflow_api = prompt_dict
+        print.Value(f'{log_prefix} prompt loaded', img_path)
+        
+        # Ultralytics model_name 경로 동기화
+        self._sync_ultralytics_model_name(self.workflow_api)
+        
+        # Checkpoint ckpt_name을 현재 checkpoint_path로 교체
+        self.set_workflow('CheckpointLoaderSimple', 'ckpt_name', self.checkpoint_path)
+        
+        # Workflow에서 checkpoint_type, checkpoint_name, char_name 추출
+        checkpoint_type, checkpoint_name, char_name = self._extract_checkpoint_and_char_from_workflow(self.workflow_api)
+        
+        if checkpoint_type:
+            self.checkpoint_type = checkpoint_type
+            print.Value(f'checkpoint_type ({log_prefix})', self.checkpoint_type)
+        
+        if checkpoint_name:
+            self.checkpoint_name = checkpoint_name
+            print.Value(f'checkpoint_name ({log_prefix})', self.checkpoint_name)
+        
+        if char_name:
+            self.char_name = char_name
+            self.no_char = False
+            print.Value(f'char_name ({log_prefix})', self.char_name)
+        else:
+            self.char_name = 'fromImg'
+            self.no_char = True
+            print.Value(f'char_name ({log_prefix})', 'Wildcard - no char specified')
+        
+        # seed 값들을 변경
+        for node_id, node_config in self.workflow_api.items():
+            if isinstance(node_config, dict) and 'inputs' in node_config:
+                inputs = node_config['inputs']
+                if isinstance(inputs, dict) and 'seed' in inputs:
+                    inputs['seed'] = seed_int()
+        
+        print.Value(f'{log_prefix} seeds updated')
+        return True
+    
     def _loop(self):
         """메인 루프"""
         # 설정 확인
@@ -1965,17 +2010,7 @@ class ComfyUIAutomation:
             if self.queue_loop_cnt == 0:
                 self.queue_loop_cnt = 1
 
-            prompt_dict = self._extract_prompt_from_png(self.from_img_path)
-            if prompt_dict:
-                self.workflow_api = prompt_dict
-                print.Value('fromImg prompt loaded', self.from_img_path)
-
-                # Ultralytics model_name 경로 동기화
-                self._sync_ultralytics_model_name(self.workflow_api)
-                
-                # Checkpoint ckpt_name을 현재 checkpoint_path로 교체
-                self.set_workflow('CheckpointLoaderSimple', 'ckpt_name', self.checkpoint_path)
-                
+            if self._load_and_setup_prompt_from_image(self.from_img_path):
                 # 파일 검증: ckpt_name, lora_name이 실제로 존재하는지 확인
                 if not self._validate_workflow_files(self.workflow_api):
                     print.Warn(f'Workflow의 파일 검증 실패: {self.from_img_path}. 다른 이미지로 교체합니다.')
@@ -1987,35 +2022,6 @@ class ComfyUIAutomation:
                         print.Warn('fromImg 대체 이미지가 없습니다. 일반 모드로 전환합니다.')
                         self.checkpoint_kind = 'Weight'  # 일반 모드로 전환
                     return
-                
-                # Workflow에서 checkpoint_type, checkpoint_name, char_name 추출
-                checkpoint_type, checkpoint_name, char_name = self._extract_checkpoint_and_char_from_workflow(self.workflow_api)
-                
-                if checkpoint_type:
-                    self.checkpoint_type = checkpoint_type
-                    print.Value('checkpoint_type (fromImg)', self.checkpoint_type)
-                
-                if checkpoint_name:
-                    self.checkpoint_name = checkpoint_name
-                    print.Value('checkpoint_name (fromImg)', self.checkpoint_name)
-                
-                if char_name:
-                    self.char_name = char_name
-                    self.no_char = False
-                    print.Value('char_name (fromImg)', self.char_name)
-                else:
-                    self.char_name = 'fromImg'
-                    self.no_char = True
-                    print.Value('char_name (fromImg)', 'Wildcard - no char specified')
-                
-                # seed 값들을 변경
-                for node_id, node_config in self.workflow_api.items():
-                    if isinstance(node_config, dict) and 'inputs' in node_config:
-                        inputs = node_config['inputs']
-                        if isinstance(inputs, dict) and 'seed' in inputs:
-                            inputs['seed'] = seed_int()
-                
-                print.Value('fromImg seeds updated')
             else:
                 print.Warn(f'fromImg prompt 추출 실패: {self.from_img_path}. 다른 이미지로 교체합니다.')
                 failed_image = self.from_img_path
@@ -2114,40 +2120,7 @@ class ComfyUIAutomation:
                 if self.from_img_path:
                     print.Value('fromImg image changed on checkpoint_loop increment', failed_image, '->', self.from_img_path)
                     # 이미지 교체 후 새로운 prompt를 로드
-                    prompt_dict = self._extract_prompt_from_png(self.from_img_path)
-                    if prompt_dict:
-                        self.workflow_api = prompt_dict
-                        print.Value('fromImg new prompt loaded', self.from_img_path)
-                        
-                        # Ultralytics model_name 경로 동기화
-                        self._sync_ultralytics_model_name(self.workflow_api)
-                        
-                        # Checkpoint ckpt_name을 현재 checkpoint_path로 교체
-                        self.set_workflow('CheckpointLoaderSimple', 'ckpt_name', self.checkpoint_path)
-                        
-                        # Workflow에서 checkpoint_type, checkpoint_name, char_name 추출
-                        checkpoint_type, checkpoint_name, char_name = self._extract_checkpoint_and_char_from_workflow(self.workflow_api)
-                        
-                        if checkpoint_name:
-                            self.checkpoint_name = checkpoint_name
-                            print.Value('checkpoint_name (fromImg increment)', self.checkpoint_name)
-                        
-                        if char_name:
-                            self.char_name = char_name
-                            self.no_char = False
-                            print.Value('char_name (fromImg increment)', self.char_name)
-                        else:
-                            self.char_name = 'fromImg'
-                            self.no_char = True
-                            print.Value('char_name (fromImg increment)', 'Wildcard - no char specified')
-                        
-                        # seed 값들을 변경
-                        for node_id, node_config in self.workflow_api.items():
-                            if isinstance(node_config, dict) and 'inputs' in node_config:
-                                inputs = node_config['inputs']
-                                if isinstance(inputs, dict) and 'seed' in inputs:
-                                    inputs['seed'] = seed_int()
-                    else:
+                    if not self._load_and_setup_prompt_from_image(self.from_img_path, 'fromImg increment'):
                         print.Warn('fromImg new prompt load failed')
                 else:
                     print.Warn('fromImg 새 이미지 선택 실패, 기존 이미지 유지')
