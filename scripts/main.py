@@ -634,6 +634,14 @@ class ComfyUIAutomation:
             print.Warn(f'{url}, Model list fetch failed for {endpoint}: {e}')
         return []
 
+    def _get_checkpoints_model_list(self) -> List[str]:
+        """ComfyUI API에서 Checkpoint 목록을 가져옵니다."""
+        return self._get_model_list('/models/checkpoints')
+
+    def _get_loras_model_list(self) -> List[str]:
+        """ComfyUI API에서 LoRA 목록을 가져옵니다."""
+        return self._get_model_list('/models/loras')
+
     def _sync_model_names(self, workflow_api: Dict) -> bool:
         """워크플로우의 모델 노드들의 model_name을 API 목록과 동기화합니다."""
         node_endpoints = {
@@ -980,8 +988,11 @@ class ComfyUIAutomation:
                 
                 # LoRA 파일 검증
                 all_lora_valid = True
+                # LoRA 파일 처리 및 수정
+                lora_model_list = self._get_loras_model_list()
                 for node_id, node_config in prompt_dict.items():
-                    if isinstance(node_config, dict) and node_config.get('class_type') == 'LoraLoader':
+                    # if isinstance(node_config, dict) and node_config.get('class_type') == 'LoraLoader':
+                    if isinstance(node_config, dict) and str(node_config.get('class_type')).startswith('LoraLoader'):
                         inputs = node_config.get('inputs', {})
                         lora_name = inputs.get('lora_name')
                         if lora_name and isinstance(lora_name, str):
@@ -989,6 +1000,40 @@ class ComfyUIAutomation:
                                 print.Warn(f'fromImg LoRA 파일 검증 실패: {lora_name} in {img_path}. 재시도 {retry_count}/{max_retries}')
                                 all_lora_valid = False
                                 break
+                        if not lora_name or not isinstance(lora_name, str):
+                            continue
+                        
+                        normalized = lora_name.replace('\\', '/').strip().lstrip('/')
+                        found = False
+                        
+                        if lora_model_list:
+                            if normalized in lora_model_list:
+                                found = True
+                            else:
+                                # 파일명만으로 매칭 시도 (경로가 다른 경우 대응)
+                                name_only = Path(normalized).name
+                                matches = [item for item in lora_model_list if Path(item).name == name_only]
+                                if matches:
+                                    inputs['lora_name'] = matches[0]
+                                    print.Value('fromImg LoRA synced', lora_name, '->', matches[0])
+                                    found = True
+                        
+                        if not found:
+                            # 로컬 리스트에서 랜덤 선택
+                            lora_file_names = self.get_now('LoraFileNames', default=[])
+                            if not lora_file_names:
+                                lora_file_names = self.get_now('CharFileNames', default=[])
+                                
+                            if lora_file_names:
+                                random_lora = random.choice(lora_file_names)
+                                lora_path = self.get_now('LoraFileDics', random_lora) or self.get_now('CharFileDics', random_lora)
+                                
+                                inputs['lora_name'] = str(lora_path)
+                                inputs['strength_model'] = 0
+                                inputs['strength_clip'] = 0
+                                print.Warn(f'fromImg LoRA not found, using random with 0 weight: {lora_name} -> {random_lora}')
+                            else:
+                                print.Err('No LoRA files available for fallback')
                 
                 if not all_lora_valid:
                     retry_count += 1
