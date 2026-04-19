@@ -827,6 +827,7 @@ class ComfyUIAutomation:
                 #     return
                 self.fromImg=True
                 get_checkpoint_kind = self.get_config('GetCheckpointKind', {'Weight': 1, 'Random': 1, 'DB': 0, 'Cycle': 0, 'Skip': 0, 'fromImg': 0})
+                get_checkpoint_kind = dict(get_checkpoint_kind)  # 원본 딕셔너리를 수정하지 않도록 복사
                 get_checkpoint_kind.pop('fromImg', None)
                 if get_checkpoint_kind:
                     self.checkpoint_kind = random_weight_count(get_checkpoint_kind)[0]
@@ -1047,13 +1048,13 @@ class ComfyUIAutomation:
                 # checkpoint_type, checkpoint_name, char_name 추출
                 checkpoint_type, checkpoint_name, char_name = self._extract_checkpoint_and_char_from_workflow(self.workflow_api)
                 
-                if checkpoint_type:
-                    self.checkpoint_type = checkpoint_type
-                    print.Value('checkpoint_type (fromImg)', self.checkpoint_type)
+                # if checkpoint_type:
+                #     self.checkpoint_type = checkpoint_type
+                #     print.Value('checkpoint_type (fromImg)', self.checkpoint_type)
                 
-                if checkpoint_name:
-                    self.checkpoint_name = checkpoint_name
-                    print.Value('checkpoint_name (fromImg)', self.checkpoint_name)
+                # if checkpoint_name:
+                #     self.checkpoint_name = checkpoint_name
+                #     print.Value('checkpoint_name (fromImg)', self.checkpoint_name)
                 
                 if char_name:
                     self.char_name = char_name
