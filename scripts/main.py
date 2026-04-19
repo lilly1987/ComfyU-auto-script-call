@@ -2113,8 +2113,42 @@ class ComfyUIAutomation:
                 self.from_img_path = self._select_from_img(exclude={failed_image} if failed_image else None)
                 if self.from_img_path:
                     print.Value('fromImg image changed on checkpoint_loop increment', failed_image, '->', self.from_img_path)
-                    # 이미지 교체 후 prompt의 Checkpoint를 현재 checkpoint_path로 교체
-                    self.set_workflow('CheckpointLoaderSimple', 'ckpt_name', self.checkpoint_path)
+                    # 이미지 교체 후 새로운 prompt를 로드
+                    prompt_dict = self._extract_prompt_from_png(self.from_img_path)
+                    if prompt_dict:
+                        self.workflow_api = prompt_dict
+                        print.Value('fromImg new prompt loaded', self.from_img_path)
+                        
+                        # Ultralytics model_name 경로 동기화
+                        self._sync_ultralytics_model_name(self.workflow_api)
+                        
+                        # Checkpoint ckpt_name을 현재 checkpoint_path로 교체
+                        self.set_workflow('CheckpointLoaderSimple', 'ckpt_name', self.checkpoint_path)
+                        
+                        # Workflow에서 checkpoint_type, checkpoint_name, char_name 추출
+                        checkpoint_type, checkpoint_name, char_name = self._extract_checkpoint_and_char_from_workflow(self.workflow_api)
+                        
+                        if checkpoint_name:
+                            self.checkpoint_name = checkpoint_name
+                            print.Value('checkpoint_name (fromImg increment)', self.checkpoint_name)
+                        
+                        if char_name:
+                            self.char_name = char_name
+                            self.no_char = False
+                            print.Value('char_name (fromImg increment)', self.char_name)
+                        else:
+                            self.char_name = 'fromImg'
+                            self.no_char = True
+                            print.Value('char_name (fromImg increment)', 'Wildcard - no char specified')
+                        
+                        # seed 값들을 변경
+                        for node_id, node_config in self.workflow_api.items():
+                            if isinstance(node_config, dict) and 'inputs' in node_config:
+                                inputs = node_config['inputs']
+                                if isinstance(inputs, dict) and 'seed' in inputs:
+                                    inputs['seed'] = seed_int()
+                    else:
+                        print.Warn('fromImg new prompt load failed')
                 else:
                     print.Warn('fromImg 새 이미지 선택 실패, 기존 이미지 유지')
             self.checkpoint_loop_cnt += 1
