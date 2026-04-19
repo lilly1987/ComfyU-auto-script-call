@@ -205,7 +205,7 @@ class SelectorMixin:
                     inputs = node.get('inputs', {})
                     lname = inputs.get('lora_name')
                     if lname and not self._validate_lora_file(lname):
-                        matches = [m for m in lora_list if Path(m).name == Path(lname).name]
+                        matches = [Path(m).as_posix() for m in lora_list if Path(m).name == Path(lname).name]
                         if matches: inputs['lora_name'] = matches[0]
                         else: all_valid = False; break
             
@@ -271,21 +271,44 @@ class SelectorMixin:
         return ct, cn, chn
 
     def _sync_model_names(self, workflow: Dict):
-        """워크플로우 내의 특정 노드 모델 경로를 실제 API 목록과 동기화합니다."""
-        endpoints = {'UltralyticsDetectorProvider': '/models/ultralytics', 'SAMLoader': '/models/sams'}
+        """워크플로우 내의 특정 노드 모델 경로를 실제 API 목록과 동기화합니다 (슬래시 보정 및 경로 매칭)."""
+        node_configs = {
+            'UltralyticsDetectorProvider': {'endpoint': '/models/ultralytics', 'key': 'model_name'},
+            'SAMLoader': {'endpoint': '/models/sams', 'key': 'model_name'},
+            # 'CheckpointLoaderSimple': {'endpoint': '/models/checkpoints', 'key': 'ckpt_name'},
+            # 'LoraLoader': {'endpoint': '/models/loras', 'key': 'lora_name'},
+            'ControlNetLoader': {'endpoint': '/models/controlnet', 'key': 'control_net_name'},
+            'VAELoader': {'endpoint': '/models/vae', 'key': 'vae_name'},
+        }
         model_cache = {}
         
         for node in workflow.values():
             if not isinstance(node, dict): continue
-            class_type = node.get('class_type')
+            class_type = str(node.get('class_type', ''))
             
-            if class_type in endpoints:
-                endpoint = endpoints[class_type]
+            # 매칭되는 설정 찾기 (정확한 매칭 우선, 그 후 접두사 매칭)
+            cfg = node_configs.get(class_type)
+            if not cfg:
+                for k, v in node_configs.items():
+                    if class_type.startswith(k):
+                        cfg = v; break
+            
+            if cfg:
+                endpoint = cfg['endpoint']
+                input_key = cfg['key']
+                
                 if endpoint not in model_cache:
                     model_cache[endpoint] = self._get_model_list(endpoint)
                 
                 m_list = model_cache[endpoint]
                 inputs = node.get('inputs', {})
-                name = Path(inputs.get('model_name', '')).name
-                matches = [m for m in m_list if Path(m).name == name]
-                if matches: inputs['model_name'] = matches[0]
+                current_val = inputs.get(input_key, '')
+                if not current_val or not isinstance(current_val, str): continue
+                
+                name = Path(current_val).name
+                matches = [Path(m).as_posix() for m in m_list if Path(m).name == name]
+                if matches:
+                    fixed_path = matches[0]
+                    if current_val != fixed_path:
+                        inputs[input_key] = fixed_path
+                        # print.Info(f"[{class_type}] Path synchronized: {current_val} -> {fixed_path}")

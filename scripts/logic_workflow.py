@@ -5,7 +5,7 @@ import time
 import copy
 from pathlib import Path
 from typing import Any, List, Dict
-from utils.dict_utils import get_nested, set_exists, update_dict, pop_nested
+from utils.dict_utils import get_nested, set_exists, add_exists, update_dict, pop_nested
 from utils.random_utils import random_min_max, random_weight, seed_int
 from utils.type_utils import get_type_list
 from utils.print_log import print, logger
@@ -50,8 +50,14 @@ class WorkflowMixin:
     def set_exists_workflow(self, node: str, key: str, value: Any) -> bool:
         return set_exists(self.workflow_api, value, node, "inputs", key) is not None
 
+    def add_exists_workflow(self, node: str, key: str, value: Any) -> bool:
+        """워크플로우 노드의 기존 값에 새로운 내용을 추가합니다 (주로 문자열 누적용)."""
+        return add_exists(self.workflow_api, value, node, "inputs", key) is not None
+
     def set_checkpoint_loader_simple(self):
         self.set_exists_workflow('CheckpointLoaderSimple', 'ckpt_name', self.checkpoint_path)
+        # 정보성 텍스트 초기화 및 체크포인트 경로 기록
+        self.set_exists_workflow('PrimitiveStringMultilineInfo', 'value', str(self.checkpoint_path) + " \n")
         if not self.fromImg:
             self.yml_checkpoint = self.get_now('dicCheckpointYml', self.checkpoint_name, default={})
 
@@ -64,6 +70,8 @@ class WorkflowMixin:
 
     def set_char(self):
         self.set_exists_workflow('LoraLoader', 'lora_name', self.char_path)
+        # 캐릭터 LoRA 경로 추가
+        self.add_exists_workflow('PrimitiveStringMultilineInfo', 'value', str(self.char_path) + " \n")
         if self.fromImg: return
         self.set_exists_workflow('LoraLoader', 'seed', seed_int())
         if self.no_char:
@@ -107,6 +115,8 @@ class WorkflowMixin:
             self.set_exists_workflow(tmp_key, 'clip', h_clip_conn)
             self.set_exists_workflow(tmp_key, 'seed', seed_int())
             self.set_exists_workflow(tmp_key, 'lora_name', self.get_now('LoraFileDics', lora))
+            # 추가된 LoRA 경로들 기록
+            self.add_exists_workflow('PrimitiveStringMultilineInfo', 'value', str(self.get_now('LoraFileDics', lora)) + " \n")
             
             self.apply_workflow_settings(tmp_key, ['strength_model', 'strength_clip', 'A', 'B'], value_func=self.set_lora_sub)
             self.apply_workflow_settings(tmp_key, ['preset', 'block_vector'], value_func=self.set_lora_sub, random_func=random_weight)
@@ -121,7 +131,7 @@ class WorkflowMixin:
     def set_fromImg(self):
         """fromImg 모드 전용 워크플로우 설정"""
         self.set_exists_workflow('CheckpointLoaderSimple', 'ckpt_name', self.checkpoint_path)
-        self._sync_model_names(self.workflow_api)
+        
         
         for node_id, node_cfg in self.workflow_api.items():
             if not isinstance(node_cfg, dict): continue
@@ -163,6 +173,9 @@ class WorkflowMixin:
         self.set_exists_workflow('negativeWildcard', 'seed', seed_int())
 
     def set_save_image(self):
+        # 모델 경로 보정 (모드 상관 없이 큐 전송 전 항상 수행)
+        self._sync_model_names(self.workflow_api)
+        
         ts = time.strftime('%Y%m%d-%H%M%S')
         if self.fromImg:
             prefix = f"{self.checkpoint_type}/{self.checkpoint_name}/{self.char_name}/{self.checkpoint_name}-{self.char_name}-{ts}-{self.total}"
