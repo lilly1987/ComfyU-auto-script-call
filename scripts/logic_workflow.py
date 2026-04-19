@@ -2,21 +2,38 @@
 import yaml
 import random
 import time
+import copy
+from pathlib import Path
 from typing import Any, List, Dict
 from utils.dict_utils import get_nested, set_exists, update_dict, pop_nested
 from utils.random_utils import random_min_max, random_weight, seed_int
 from utils.type_utils import get_type_list
-from utils.print_log import print
+from utils.print_log import print, logger
 
 class WorkflowMixin:
     """ComfyUI 워크플로우 수정을 담당하는 Mixin"""
+
+    def copy_workflow_api(self):
+        if self.fromImg: return
+        self.workflow_api = copy.deepcopy(self.get_now('workflow_api', default={}))
+
+    def set_tive(self, num_name: str, dic: Dict, reset: bool = False):
+        if reset:
+            self.positive_dics.pop(num_name, None); self.negative_dics.pop(num_name, None)
+        if dic:
+            for key in ['positive', 'negative']:
+                target = self.positive_dics if key == 'positive' else self.negative_dics
+                update_dict(target.setdefault(num_name, {}), dic.get(key))
 
     def apply_workflow_settings(self, node: str, keys: List[str], value_func=None, random_func=random_min_max):
         """워크플로우 노드에 설정값과 랜덤 가중치를 일괄 적용합니다."""
         setup = self.get_now('setupWorkflow', default={})
         for k in keys:
             val = self.get_workflow(node, k)
-            if value_func: val = value_func(node, k) if value_func.__code__.co_argcount == 2 else value_func(k)
+            if value_func:
+                # Bound methods include 'self' in co_argcount, so we adjust the count check
+                c = value_func.__code__.co_argcount - (1 if hasattr(value_func, '__self__') else 0)
+                val = value_func(node, k) if c == 2 else value_func(k)
             val = get_nested(setup, 'workflow', node, k, default=val)
             if random_func and val is not None: val = random_func(val)
             if val is None: continue
@@ -56,6 +73,69 @@ class WorkflowMixin:
             func = lambda k: self.get_now('dicLoraYml', self.char_name, k, default=self.get_now('setupWorkflow', 'charDefault', k))
             self.apply_workflow_settings('LoraLoader', ['strength_model', 'strength_clip', 'A', 'B'], value_func=func)
             self.apply_workflow_settings('LoraLoader', ['preset', 'block_vector'], value_func=func, random_func=random_weight)
+
+    def set_lora_sub(self, k: str) -> Any:
+        v = self.get_now('setupWorkflow', 'loraDefault', k)
+        return self.get_now('dicLoraYml', self.lora_tmp, k, default=v)
+
+    def set_lora(self):
+        if self.fromImg: return
+        lora_loader_node = get_nested(self.workflow_api, 'LoraLoader')
+        if not lora_loader_node: return
+        
+        next_key = 'LoraLoader' # 다른 노드들이 다 참조함.
+        dic_cp = self.get_now('dicCheckpointYml', self.checkpoint_name, default={})
+        h_model_conn = ['ModelSamplingDiscrete', 0] if isinstance(dic_cp.get('ModelSamplingDiscrete'), dict) else self.get_workflow(next_key, 'model')
+        h_clip_conn = ['CLIPSetLastLayer', 0] if isinstance(dic_cp.get('CLIPSetLastLayer'), dict) else self.get_workflow(next_key, 'clip')
+
+        self.tive_lora = {}
+        self.IsStyleLora, self.IsDressLora = False, False
+
+        for lora in self.loras_set:
+            if lora not in self.get_now('LoraFileNames', default=[]): continue
+            self.lora_num += 1
+            self.lora_tmp = lora
+            dic = self.get_now('dicLoraYml', lora, default={})
+            tags = [str(x).lower() for x in dic.get('tag', [])]
+            if 'style' in tags: self.IsStyleLora = True
+            if 'dress' in tags: self.IsDressLora = True
+            update_dict(self.tive_lora, dic)
+            
+            tmp_key = f'LoraLoader-{self.lora_num}'
+            self.workflow_api[tmp_key] = copy.deepcopy(lora_loader_node)
+            self.set_exists_workflow(tmp_key, 'model', h_model_conn)
+            self.set_exists_workflow(tmp_key, 'clip', h_clip_conn)
+            self.set_exists_workflow(tmp_key, 'seed', seed_int())
+            self.set_exists_workflow(tmp_key, 'lora_name', self.get_now('LoraFileDics', lora))
+            
+            self.apply_workflow_settings(tmp_key, ['strength_model', 'strength_clip', 'A', 'B'], value_func=self.set_lora_sub)
+            self.apply_workflow_settings(tmp_key, ['preset', 'block_vector'], value_func=self.set_lora_sub, random_func=random_weight)
+            
+            model_conn, clip_conn = [tmp_key, 0], [tmp_key, 1]
+            self.set_exists_workflow(next_key, 'model', model_conn)
+            self.set_exists_workflow(next_key, 'clip', clip_conn)
+            next_key = tmp_key
+            # print.Info(f"{tmp_key} / model_conn: {model_conn} / clip_conn: {clip_conn}")
+            # print.Info(f"{next_key} / model_conn: {model_conn} / clip_conn: {clip_conn}")
+
+    def set_fromImg(self):
+        """fromImg 모드 전용 워크플로우 설정"""
+        self.set_exists_workflow('CheckpointLoaderSimple', 'ckpt_name', self.checkpoint_path)
+        self._sync_model_names(self.workflow_api)
+        
+        for node_id, node_cfg in self.workflow_api.items():
+            if not isinstance(node_cfg, dict): continue
+            inputs = node_cfg.get('inputs', {})
+            if 'seed' in inputs: inputs['seed'] = seed_int()
+            
+            class_type = str(node_cfg.get('class_type', ''))
+            if class_type.startswith('LoraLoader'):
+                lname = inputs.get('lora_name')
+                if lname:
+                    self.lora_tmp = Path(lname).stem
+                    for k in ['strength_model', 'strength_clip', 'A', 'B']:
+                        v = self.set_lora_sub(k)
+                        if v is not None: inputs[k] = random_min_max(v)
 
     def set_wildcard(self):
         if self.fromImg: return

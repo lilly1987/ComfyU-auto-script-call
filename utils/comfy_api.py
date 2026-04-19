@@ -47,6 +47,11 @@ def queue_prompt(prompt: Dict[str, Any], url: str = "http://127.0.0.1:8188/promp
             print.Err('프롬프트 내용:', prompt)
             print.Err('HTTP 오류 코드:', e.code)
             logger.exception("HTTPError 발생: %s, 프롬프트: %s", e, prompt)
+            try:
+                with open(time.strftime("%Y%m%d-%H%M%S.json"), "w", encoding="utf-8") as f:
+                    json.dump(prompt, f, indent=2, ensure_ascii=False)
+            except Exception as e:
+                logger.error(f"JSON 파일 저장 실패: {e}")
             return False, e.code
         except URLError as e:
             print.Warn('URL 오류:', e.reason)            

@@ -113,6 +113,22 @@ class SelectorMixin:
             self.char_name = name
             self.char_path = self.get_now('CharFileDics', name)
 
+    def _cycle_sample(self, pool_key: str, source_items: List[str], count: int = 1) -> List[str]:
+        """항목이 모두 소진될 때까지 순환 선택합니다."""
+        if not source_items or count <= 0: return []
+        pool = list(self.get_now(pool_key, default=[]))
+        if not pool: pool = list(source_items)
+        
+        selected = []
+        for _ in range(count):
+            if not pool: pool = list(source_items)
+            if not pool: break
+            idx = random.randrange(len(pool))
+            selected.append(pool.pop(idx))
+            
+        self.set_now(pool, pool_key)
+        return selected
+
     def lora_change(self):
         """LoRA 목록을 선택합니다."""
         if self.fromImg: return
