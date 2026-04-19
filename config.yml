@@ -38,6 +38,7 @@ GetCheckpointKind:
     fromImg: 1
 
 fromImg: 'W:\photo\_2d\'
+fromImgMaxRetries: 100
 
 CheckpointDbWeight: 3 # GetCharKind 에서 DB일 경우 최대 가중치
 CheckpointDbWeightMax: 9 # GetCharKind 에서 DB일 경우 최대 가중치

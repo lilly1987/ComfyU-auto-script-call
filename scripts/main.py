@@ -949,123 +949,82 @@ class ComfyUIAutomation:
         """Char를 선택합니다. (중복 로직을 줄이고 와일드카드 처리를 명확히 함)"""
         # fromImg 모드일 때 이미지 선택 및 검증
         if self.fromImg:
-            # 사용 가능한 이미지 선택
-            img_path = self._select_from_img()
-            if not img_path:
-                print.Warn('fromImg 모드이지만 유효한 이미지를 찾을 수 없습니다.')
-                self.fromImg = False
-                self.checkpoint_kind = 'Weight'  # 일반 모드로 전환
+            max_retries = self.get_config('fromImgMaxRetries', 50)  # 최대 재시도 횟수
+            retry_count = 0
+            
+            while retry_count <= max_retries:
+                # 사용 가능한 이미지 선택
+                img_path = self._select_from_img()
+                if not img_path:
+                    print.Warn(f'fromImg 모드이지만 유효한 이미지를 찾을 수 없습니다. 재시도 {retry_count}/{max_retries}')
+                    retry_count += 1
+                    if retry_count > max_retries:
+                        print.Warn('fromImg 최대 재시도 횟수 초과. 일반 모드로 전환합니다.')
+                        self.fromImg = False
+                        self.checkpoint_kind = 'Weight'
+                        return
+                    continue
+                
+                # 메타데이터에서 prompt 추출
+                prompt_dict = self._extract_prompt_from_png(img_path)
+                if not prompt_dict:
+                    print.Warn(f'fromImg prompt 추출 실패: {img_path}. 재시도 {retry_count}/{max_retries}')
+                    retry_count += 1
+                    continue
+                
+                # CheckpointLoaderSimple 노드 존재 체크
+                if 'CheckpointLoaderSimple' not in prompt_dict:
+                    print.Warn(f'fromImg 이미지에 CheckpointLoaderSimple 노드가 없습니다: {img_path}. 재시도 {retry_count}/{max_retries}')
+                    retry_count += 1
+                    continue
+                
+                # LoRA 파일 검증
+                all_lora_valid = True
+                for node_id, node_config in prompt_dict.items():
+                    if isinstance(node_config, dict) and node_config.get('class_type') == 'LoraLoader':
+                        inputs = node_config.get('inputs', {})
+                        lora_name = inputs.get('lora_name')
+                        if lora_name and isinstance(lora_name, str):
+                            if not self._validate_lora_file(lora_name):
+                                print.Warn(f'fromImg LoRA 파일 검증 실패: {lora_name} in {img_path}. 재시도 {retry_count}/{max_retries}')
+                                all_lora_valid = False
+                                break
+                
+                if not all_lora_valid:
+                    retry_count += 1
+                    continue
+                
+                # 검증 통과: workflow_api 설정
+                self.workflow_api = prompt_dict
+                self.from_img_path = img_path
+                print.Value('fromImg image selected and validated', img_path)
+                
+                # checkpoint_type, checkpoint_name, char_name 추출
+                checkpoint_type, checkpoint_name, char_name = self._extract_checkpoint_and_char_from_workflow(self.workflow_api)
+                
+                if checkpoint_type:
+                    self.checkpoint_type = checkpoint_type
+                    print.Value('checkpoint_type (fromImg)', self.checkpoint_type)
+                
+                if checkpoint_name:
+                    self.checkpoint_name = checkpoint_name
+                    print.Value('checkpoint_name (fromImg)', self.checkpoint_name)
+                
+                if char_name:
+                    self.char_name = char_name
+                    self.no_char = False
+                    print.Value('char_name (fromImg)', self.char_name)
+                else:
+                    self.char_name = 'fromImg'
+                    self.no_char = True
+                    print.Value('char_name (fromImg)', 'Wildcard - no char specified')
+                
                 return
             
-            # 메타데이터에서 prompt 추출
-            prompt_dict = self._extract_prompt_from_png(img_path)
-            if not prompt_dict:
-                print.Warn(f'fromImg prompt 추출 실패: {img_path}. 다른 이미지로 교체합니다.')
-                failed_image = img_path
-                img_path = self._select_from_img(exclude={failed_image})
-                if img_path:
-                    prompt_dict = self._extract_prompt_from_png(img_path)
-                    if not prompt_dict:
-                        print.Warn(f'fromImg prompt 추출 재시도 실패: {img_path}. 일반 모드로 전환합니다.')
-                        self.fromImg = False
-                        self.checkpoint_kind = 'Weight'
-                        return
-                else:
-                    print.Warn('fromImg 대체 이미지가 없습니다. 일반 모드로 전환합니다.')
-                    self.fromImg = False
-                    self.checkpoint_kind = 'Weight'
-                    return
-            
-            # CheckpointLoaderSimple 노드 존재 체크
-            if 'CheckpointLoaderSimple' not in prompt_dict:
-                print.Warn(f'fromImg 이미지에 CheckpointLoaderSimple 노드가 없습니다: {img_path}. 다른 이미지로 교체합니다.')
-                failed_image = img_path
-                img_path = self._select_from_img(exclude={failed_image})
-                if img_path:
-                    prompt_dict = self._extract_prompt_from_png(img_path)
-                    if prompt_dict and 'CheckpointLoaderSimple' in prompt_dict:
-                        pass  # 성공
-                    else:
-                        print.Warn(f'fromImg CheckpointLoaderSimple 체크 재시도 실패: {img_path}. 일반 모드로 전환합니다.')
-                        self.fromImg = False
-                        self.checkpoint_kind = 'Weight'
-                        return
-                else:
-                    print.Warn('fromImg 대체 이미지가 없습니다. 일반 모드로 전환합니다.')
-                    self.fromImg = False
-                    self.checkpoint_kind = 'Weight'
-                    return
-            
-            # LoRA 파일 검증
-            all_lora_valid = True
-            for node_id, node_config in prompt_dict.items():
-                if isinstance(node_config, dict) and node_config.get('class_type') == 'LoraLoader':
-                    inputs = node_config.get('inputs', {})
-                    lora_name = inputs.get('lora_name')
-                    if lora_name and isinstance(lora_name, str):
-                        if not self._validate_lora_file(lora_name):
-                            print.Warn(f'fromImg LoRA 파일 검증 실패: {lora_name} in {img_path}')
-                            all_lora_valid = False
-                            break
-            
-            if not all_lora_valid:
-                print.Warn(f'fromImg LoRA 검증 실패: {img_path}. 다른 이미지로 교체합니다.')
-                failed_image = img_path
-                img_path = self._select_from_img(exclude={failed_image})
-                if img_path:
-                    prompt_dict = self._extract_prompt_from_png(img_path)
-                    if prompt_dict:
-                        # LoRA 재검증
-                        all_lora_valid = True
-                        for node_id, node_config in prompt_dict.items():
-                            if isinstance(node_config, dict) and node_config.get('class_type') == 'LoraLoader':
-                                inputs = node_config.get('inputs', {})
-                                lora_name = inputs.get('lora_name')
-                                if lora_name and isinstance(lora_name, str):
-                                    if not self._validate_lora_file(lora_name):
-                                        all_lora_valid = False
-                                        break
-                        if not all_lora_valid:
-                            print.Warn(f'fromImg LoRA 재검증 실패: {img_path}. 일반 모드로 전환합니다.')
-                            self.fromImg = False
-                            self.checkpoint_kind = 'Weight'
-                            return
-                    else:
-                        print.Warn(f'fromImg prompt 재추출 실패: {img_path}. 일반 모드로 전환합니다.')
-                        self.fromImg = False
-                        self.checkpoint_kind = 'Weight'
-                        return
-                else:
-                    print.Warn('fromImg 대체 이미지가 없습니다. 일반 모드로 전환합니다.')
-                    self.fromImg = False
-                    self.checkpoint_kind = 'Weight'
-                    return
-            
-            # 검증 통과: workflow_api 설정
-            self.workflow_api = prompt_dict
-            self.from_img_path = img_path
-            print.Value('fromImg image selected and validated', img_path)
-            
-            # checkpoint_type, checkpoint_name, char_name 추출
-            checkpoint_type, checkpoint_name, char_name = self._extract_checkpoint_and_char_from_workflow(self.workflow_api)
-            
-            if checkpoint_type:
-                self.checkpoint_type = checkpoint_type
-                print.Value('checkpoint_type (fromImg)', self.checkpoint_type)
-            
-            if checkpoint_name:
-                self.checkpoint_name = checkpoint_name
-                print.Value('checkpoint_name (fromImg)', self.checkpoint_name)
-            
-            if char_name:
-                self.char_name = char_name
-                self.no_char = False
-                print.Value('char_name (fromImg)', self.char_name)
-            else:
-                self.char_name = 'fromImg'
-                self.no_char = True
-                print.Value('char_name (fromImg)', 'Wildcard - no char specified')
-            
+            # 최대 재시도 초과
+            print.Warn('fromImg 최대 재시도 횟수 초과. 일반 모드로 전환합니다.')
+            self.fromImg = False
+            self.checkpoint_kind = 'Weight'
             return
         
         # GetCharKind 비중 기반 선택 (Wildcard / DB / Weight / Random)
