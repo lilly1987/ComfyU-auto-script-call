@@ -80,17 +80,16 @@ class LoopMixin:
             self.queue_loop_cnt += 1
      
         # 4. 워크플로우 노드 값 설정
-        if self.fromImg:
-            self.set_fromImg()
-        else:
-            self.set_setup_workflow_to_workflow_api()
-            self.set_checkpoint_loader_simple()
-            self.set_ksampler()
-            self.set_dic_checkpoint_yml_to_workflow_api()
-            self.set_char()
-            self.set_lora()
-            self.set_wildcard()
+        self.set_setup_workflow_to_workflow_api()
+        self.set_checkpoint_loader_simple()
+        self.set_ksampler()
+        self.set_dic_checkpoint_yml_to_workflow_api()
+        self.set_char()
+        self.set_lora()
+        self.set_seed()
+        self.set_wildcard()
     
+        self._sync_model_names(self.workflow_api)
         self.set_save_image()
         
         # 로깅 및 디버그 정보 출력

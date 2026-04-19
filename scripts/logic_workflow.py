@@ -62,18 +62,18 @@ class WorkflowMixin:
             self.yml_checkpoint = self.get_now('dicCheckpointYml', self.checkpoint_name, default={})
 
     def set_ksampler(self):
-        self.set_exists_workflow('KSampler', 'seed', seed_int())
+        # self.set_exists_workflow('KSampler', 'seed', seed_int())
         inputs = get_nested(self.workflow_api, 'KSampler', "inputs", default={})
         func = lambda k: self.get_now('dicCheckpointYml', self.checkpoint_name, k)
         self.apply_workflow_settings('KSampler', get_type_list(inputs, (int, float), (bool,)), value_func=func)
         self.apply_workflow_settings('KSampler', get_type_list(inputs, (str, bool)), value_func=func, random_func=random_weight)
 
     def set_char(self):
-        self.set_exists_workflow('LoraLoader', 'lora_name', self.char_path)
+        if not self.fromImg: 
+            self.set_exists_workflow('LoraLoader', 'lora_name', self.char_path)
         # 캐릭터 LoRA 경로 추가
         self.add_exists_workflow('PrimitiveStringMultilineInfo', 'value', str(self.char_path) + " \n")
-        if self.fromImg: return
-        self.set_exists_workflow('LoraLoader', 'seed', seed_int())
+        # self.set_exists_workflow('LoraLoader', 'seed', seed_int())
         if self.no_char:
             self.set_exists_workflow('LoraLoader', 'strength_model', 0.0)
             self.set_exists_workflow('LoraLoader', 'strength_clip', 0.0)
@@ -87,7 +87,18 @@ class WorkflowMixin:
         return self.get_now('dicLoraYml', self.lora_tmp, k, default=v)
 
     def set_lora(self):
-        if self.fromImg: return
+        if self.fromImg:           
+            for node_id, node_cfg in self.workflow_api.items():
+                
+                class_type = str(node_cfg.get('class_type', ''))
+                if class_type.startswith('LoraLoader'):
+                    lname = inputs.get('lora_name')
+                    if lname:
+                        self.lora_tmp = Path(lname).stem
+                        for k in ['strength_model', 'strength_clip', 'A', 'B']:
+                            v = self.set_lora_sub(k)
+                            if v is not None: inputs[k] = random_min_max(v)
+            return
         lora_loader_node = get_nested(self.workflow_api, 'LoraLoader')
         if not lora_loader_node: return
         
@@ -113,7 +124,7 @@ class WorkflowMixin:
             self.workflow_api[tmp_key] = copy.deepcopy(lora_loader_node)
             self.set_exists_workflow(tmp_key, 'model', h_model_conn)
             self.set_exists_workflow(tmp_key, 'clip', h_clip_conn)
-            self.set_exists_workflow(tmp_key, 'seed', seed_int())
+            # self.set_exists_workflow(tmp_key, 'seed', seed_int())
             self.set_exists_workflow(tmp_key, 'lora_name', self.get_now('LoraFileDics', lora))
             # 추가된 LoRA 경로들 기록
             self.add_exists_workflow('PrimitiveStringMultilineInfo', 'value', str(self.get_now('LoraFileDics', lora)) + " \n")
@@ -128,24 +139,12 @@ class WorkflowMixin:
             # print.Info(f"{tmp_key} / model_conn: {model_conn} / clip_conn: {clip_conn}")
             # print.Info(f"{next_key} / model_conn: {model_conn} / clip_conn: {clip_conn}")
 
-    def set_fromImg(self):
-        """fromImg 모드 전용 워크플로우 설정"""
-        self.set_exists_workflow('CheckpointLoaderSimple', 'ckpt_name', self.checkpoint_path)
-        
+    def set_seed(self):
         
         for node_id, node_cfg in self.workflow_api.items():
             if not isinstance(node_cfg, dict): continue
             inputs = node_cfg.get('inputs', {})
             if 'seed' in inputs: inputs['seed'] = seed_int()
-            
-            class_type = str(node_cfg.get('class_type', ''))
-            if class_type.startswith('LoraLoader'):
-                lname = inputs.get('lora_name')
-                if lname:
-                    self.lora_tmp = Path(lname).stem
-                    for k in ['strength_model', 'strength_clip', 'A', 'B']:
-                        v = self.set_lora_sub(k)
-                        if v is not None: inputs[k] = random_min_max(v)
 
     def set_wildcard(self):
         if self.fromImg: return
@@ -169,12 +168,11 @@ class WorkflowMixin:
         
         self.set_exists_workflow('positiveWildcard', 'wildcard_text', f",,,,{','.join(p_list)},,,,")
         self.set_exists_workflow('negativeWildcard', 'wildcard_text', f",,,,{','.join(n_list)},,,,")
-        self.set_exists_workflow('positiveWildcard', 'seed', seed_int())
-        self.set_exists_workflow('negativeWildcard', 'seed', seed_int())
+        # self.set_exists_workflow('positiveWildcard', 'seed', seed_int())
+        # self.set_exists_workflow('negativeWildcard', 'seed', seed_int())
 
     def set_save_image(self):
         # 모델 경로 보정 (모드 상관 없이 큐 전송 전 항상 수행)
-        self._sync_model_names(self.workflow_api)
         
         ts = time.strftime('%Y%m%d-%H%M%S')
         if self.fromImg:
@@ -192,16 +190,16 @@ class WorkflowMixin:
         if self.get_config('noSaveImage1', False): pop_nested(self.workflow_api, 'SaveImage1', "inputs", 'images')
 
     def set_setup_workflow_to_workflow_api(self):
-        if self.fromImg: return
+        # if self.fromImg: return
         exclude = set(self.get_config('excludeNode', []))
         for node_id in (set(self.workflow_api.keys()) - exclude):
-            self.set_exists_workflow(node_id, 'seed', seed_int())
+            # self.set_exists_workflow(node_id, 'seed', seed_int())
             inputs = self.workflow_api[node_id].get("inputs", {})
             self.apply_workflow_settings(node_id, get_type_list(inputs, (int, float), (bool,)))
             self.apply_workflow_settings(node_id, get_type_list(inputs, (str, bool)), random_func=random_weight)
 
     def set_dic_checkpoint_yml_to_workflow_api(self):
-        if self.fromImg: return
+        # if self.fromImg: return
         dic = self.get_now('dicCheckpointYml', self.checkpoint_name, default={})
         for k, v in dic.items():
             if k in self.workflow_api:
