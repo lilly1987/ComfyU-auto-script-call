@@ -593,18 +593,22 @@ class ComfyUIAutomation:
                 # ckpt_name 검증
                 if 'ckpt_name' in inputs:
                     ckpt_name = inputs['ckpt_name']
-                    if isinstance(ckpt_name, str) and not self._validate_checkpoint_file(ckpt_name):
-                        print.Warn(f'Node {node_id}: {ckpt_name} 파일이 없습니다')
-                        all_valid = False
-                        invalid_nodes.append(node_id)
+                    if isinstance(ckpt_name, str):
+                        normalized_ckpt = ckpt_name.strip()
+                        if normalized_ckpt.lower() in ('none', 'null', '') or not self._validate_checkpoint_file(normalized_ckpt):
+                            print.Warn(f'Node {node_id}: invalid ckpt_name {ckpt_name}')
+                            all_valid = False
+                            invalid_nodes.append(node_id)
                 
                 # lora_name 검증
                 if 'lora_name' in inputs:
                     lora_name = inputs['lora_name']
-                    if isinstance(lora_name, str) and not self._validate_lora_file(lora_name):
-                        print.Warn(f'Node {node_id}: {lora_name} 파일이 없습니다')
-                        all_valid = False
-                        invalid_nodes.append(node_id)
+                    if isinstance(lora_name, str):
+                        normalized_lora = lora_name.strip()
+                        if normalized_lora.lower() in ('none', 'null', '') or not self._validate_lora_file(normalized_lora):
+                            print.Warn(f'Node {node_id}: invalid lora_name {lora_name}')
+                            all_valid = False
+                            invalid_nodes.append(node_id)
             
             if invalid_nodes:
                 print.Value('Invalid nodes', invalid_nodes)
@@ -614,9 +618,9 @@ class ComfyUIAutomation:
             print.Warn(f'Workflow 파일 검증 중 오류: {e}')
             return False
 
-    def _get_ultralytics_model_list(self) -> List[str]:
-        """Ultralytics 모델 목록을 ComfyUI API에서 가져옵니다."""
-        url = self.get_config('url2').rstrip('/') + '/models/ultralytics'
+    def _get_model_list(self, endpoint: str) -> List[str]:
+        """지정된 엔드포인트에서 모델 목록을 ComfyUI API에서 가져옵니다."""
+        url = self.get_config('url2').rstrip('/') + endpoint
         try:
             with urllib_request.urlopen(url, timeout=5) as response:
                 data = json.loads(response.read().decode('utf-8'))
@@ -627,61 +631,56 @@ class ComfyUIAutomation:
                         return [str(x) for x in data['models'] if isinstance(x, str)]
                     return [str(x) for x in data.values() if isinstance(x, str)]
         except Exception as e:
-            print.Warn(f'Ultralytics url: {url}')
-            print.Warn(f'Ultralytics 모델 목록 조회 실패: {e}')
+            print.Warn(f'{url}, Model list fetch failed for {endpoint}: {e}')
         return []
 
-    def _get_checkpoints_model_list(self) -> List[str]:
-        """Checkpoint 모델 목록을 ComfyUI API에서 가져옵니다."""
-        url = self.get_config('url').rstrip('/') + '/models/checkpoints'
-        try:
-            with urllib_request.urlopen(url, timeout=5) as response:
-                data = json.loads(response.read().decode('utf-8'))
-                if isinstance(data, list):
-                    return [str(x) for x in data if isinstance(x, str)]
-                if isinstance(data, dict):
-                    if 'models' in data and isinstance(data['models'], list):
-                        return [str(x) for x in data['models'] if isinstance(x, str)]
-                    return [str(x) for x in data.values() if isinstance(x, str)]
-        except Exception as e:
-            print.Warn(f'Checkpoint 모델 목록 조회 실패: {e}')
-        return []
-
-    def _sync_ultralytics_model_name(self, workflow_api: Dict) -> bool:
-        """UltralyticsDetectorProvider의 model_name만 현재 위치와 동기화합니다."""
-        if 'UltralyticsDetectorProvider' not in workflow_api:
-            return False
-
-        model_list = self._get_ultralytics_model_list()
-        if not model_list:
-            return False
-
-        node_config = workflow_api.get('UltralyticsDetectorProvider')
-        if not isinstance(node_config, dict) or 'inputs' not in node_config:
-            return False
-
-        inputs = node_config['inputs']
-        # if not isinstance(inputs, dict) or 'model_name' not in inputs:
-        #     return False
-
-        model_name = inputs['model_name']
-        # if not isinstance(model_name, str):
-        #     return False
-
-        normalized = model_name.replace('\\', '/').strip().lstrip('/')
-        if normalized in model_list:
-            return False
-
-        # 기존 파일명과 일치하는 첫 번째 항목만 사용
-        name_only = Path(normalized).name
-        matches = [Path(item).as_posix() for item in model_list if Path(item).name == name_only]
-        if matches:
-            inputs['model_name'] = matches[0]
-            print.Value('Ultralytics model_name fixed', 'UltralyticsDetectorProvider', model_name, '->', matches[0])
-            return True
-
-        print.Warn('Ultralytics model_name을 찾을 수 없음', 'UltralyticsDetectorProvider', model_name)
-        return False
+    def _sync_model_names(self, workflow_api: Dict) -> bool:
+        """워크플로우의 모델 노드들의 model_name을 API 목록과 동기화합니다."""
+        node_endpoints = {
+            'UltralyticsDetectorProvider': '/models/ultralytics',
+            'SAMLoader': '/models/sams',
+            # 추가 노드 타입은 여기에
+        }
+        
+        synced_any = False
+        
+        for node_id, node_config in workflow_api.items():
+            if not isinstance(node_config, dict):
+                continue
+            
+            node_type = node_config.get('class_type')
+            if node_type not in node_endpoints:
+                continue
+            
+            if 'inputs' not in node_config or not isinstance(node_config['inputs'], dict):
+                continue
+            
+            inputs = node_config['inputs']
+            if 'model_name' not in inputs or not isinstance(inputs['model_name'], str):
+                continue
+            
+            model_name = inputs['model_name']
+            endpoint = node_endpoints[node_type]
+            model_list = self._get_model_list(endpoint)
+            
+            if not model_list:
+                continue
+            
+            normalized = model_name.replace('\\', '/').strip().lstrip('/')
+            if normalized in model_list:
+                continue  # 이미 맞음
+            
+            # 기존 파일명과 일치하는 첫 번째 항목 찾기
+            name_only = Path(normalized).name
+            matches = [Path(item).as_posix() for item in model_list if Path(item).name == name_only]
+            if matches:
+                inputs['model_name'] = matches[0]
+                print.Value(f'{node_type} model_name synced', model_name, '->', matches[0])
+                synced_any = True
+            else:
+                print.Warn(f'{node_type} model_name not found', model_name)
+        
+        return synced_any
     
     def _sync_checkpoint_model_name(self, workflow_api: Dict) -> bool:
         """CheckpointLoaderSimple의 ckpt_name을 API 목록과 동기화합니다. 없으면 랜덤 선택."""
@@ -1945,7 +1944,7 @@ class ComfyUIAutomation:
         print.Value(f'{log_prefix} prompt loaded', img_path)
         
         # Ultralytics model_name 경로 동기화
-        self._sync_ultralytics_model_name(self.workflow_api)
+        self._sync_model_names(self.workflow_api)
         
         # Checkpoint ckpt_name을 현재 checkpoint_path로 교체
         self.set_workflow('CheckpointLoaderSimple', 'ckpt_name', self.checkpoint_path)
@@ -2003,13 +2002,27 @@ class ComfyUIAutomation:
         
         self.copy_workflow_api()
         
-        # fromImg 모드 처리: 이미지에서 prompt 추출하고 workflow_api 업데이트
-        if self.from_img_path:
-            if self.char_loop_cnt == 0:
-                self.char_loop_cnt = 1
-            if self.queue_loop_cnt == 0:
-                self.queue_loop_cnt = 1
+        # 일반 모드: 기존 로직
+        if self.char_loop_cnt == 0:
+            self.char_change()
+            self.char_loop_cnt += 1
+            self.queue_loop_cnt = 0
+        
+        if self.queue_loop_cnt == 0:
+            self.lora_change()
+            self.queue_loop_cnt += 1
+        
+        # 워크플로우 설정
+        self.set_setup_workflow_to_workflow_api()
+        self.set_checkpoint_loader_simple()
+        self.set_ksampler()
+        self.set_dic_checkpoint_yml_to_workflow_api()
+        self.set_char()
+        self.set_lora()
+        self.set_wildcard()
 
+        # fromImg 모드 처리: 이미지에서 prompt 추출하고 workflow_api 업데이트
+        if self.fromImg:
             if self._load_and_setup_prompt_from_image(self.from_img_path):
                 # 파일 검증: ckpt_name, lora_name이 실제로 존재하는지 확인
                 if not self._validate_workflow_files(self.workflow_api):
@@ -2032,25 +2045,7 @@ class ComfyUIAutomation:
                     print.Warn('fromImg 대체 이미지가 없습니다. 일반 모드로 전환합니다.')
                     self.checkpoint_kind = 'Weight'  # 일반 모드로 전환
                 return
-        else:
-            # 일반 모드: 기존 로직
-            if self.char_loop_cnt == 0:
-                self.char_change()
-                self.char_loop_cnt += 1
-                self.queue_loop_cnt = 0
-            
-            if self.queue_loop_cnt == 0:
-                self.lora_change()
-                self.queue_loop_cnt += 1
-            
-            # 워크플로우 설정
-            self.set_setup_workflow_to_workflow_api()
-            self.set_checkpoint_loader_simple()
-            self.set_ksampler()
-            self.set_dic_checkpoint_yml_to_workflow_api()
-            self.set_char()
-            self.set_lora()
-            self.set_wildcard()
+
         self.set_save_image()
     
         if self.get_config("WorkflowPrint", False):
