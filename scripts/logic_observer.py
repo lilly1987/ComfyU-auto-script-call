@@ -129,7 +129,7 @@ class ObserverMixin:
                 if r0 == 'setupWildcard.yml': self._get_setup_wildcard()
                 elif r0 == 'setupWorkflow.yml': self._get_setup_workflow()
                 elif r0 == 'config.yml': self.config_loader.reload(); self.config = self.config_loader.config
-        except Exception: pass
+        except Exception as e: print(f"Data path observer error: {e}")
 
     def _checkpoint_path_callback(self, event: FileSystemEvent):
         """모델 파일 추가/삭제 감지"""
@@ -147,7 +147,8 @@ class ObserverMixin:
                 self.update_safetensors(path, rel.parts[0], event.event_type,
                                        'CheckpointPath', 'CheckpointFileDics', 
                                        'CheckpointFileLists', 'CheckpointFileNames')
-        except Exception: pass
+        except Exception as e: print(f"Checkpoint observer error: {e}")
+            
 
     def _lora_path_callback(self, event: FileSystemEvent):
         """LoRA 파일 추가/삭제 감지"""
@@ -170,7 +171,7 @@ class ObserverMixin:
                     self.update_safetensors(path, rel.parts[0], event.event_type,
                                            'LoraPath', 'LoraFileDics', 
                                            'LoraFileLists', 'LoraFileNames')
-        except Exception: pass
+        except Exception as e: print(f"Lora observer error: {e}")
 
     def _config_callback(self, event: FileSystemEvent):
         """config.yml 변경 감지"""
