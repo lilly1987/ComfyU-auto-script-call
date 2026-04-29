@@ -177,8 +177,12 @@ def pop_nested(d: Dict, *keys, default: Any = None) -> Any:
     Returns:
         제거된 값 또는 기본값
     """
-    if len(keys) < 2:
+    if not keys:
         return default
+    
+    # 키가 하나만 들어온 경우
+    if len(keys) == 1:
+        return d.pop(keys[0], default)
     
     current = d
     for key in keys[:-2]:
