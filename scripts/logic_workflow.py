@@ -171,10 +171,10 @@ class WorkflowMixin:
         # self.set_exists_workflow('positiveWildcard', 'seed', seed_int())
         # self.set_exists_workflow('negativeWildcard', 'seed', seed_int())
     
-        logger.info(f"Positive Wildcard: {p_list}")
-        logger.info(f"Negative Wildcard: {n_list}")
-        print.Info(f"Positive Wildcard",p_list)
-        print.Info(f"Negative Wildcard",n_list)
+        # logger.info(f"Positive Wildcard: {p_list}")
+        # logger.info(f"Negative Wildcard: {n_list}")
+        # print.Info(f"Positive Wildcard",p_list)
+        # print.Info(f"Negative Wildcard",n_list)
 
     def set_save_image(self):
         # 모델 경로 보정 (모드 상관 없이 큐 전송 전 항상 수행)
