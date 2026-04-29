@@ -60,7 +60,6 @@ if not config_path.exists():
     from utils.data_init import create_data_files
     create_data_files()
 
-
 class ComfyUIAutomation(SelectorMixin, WorkflowMixin, ObserverMixin, DataLoaderMixin, ApiMixin, LoopMixin):
     """ComfyUI 자동화 메인 클래스"""
     

@@ -33,12 +33,17 @@ class SelectorMixin:
             get_kind = self.get_config('GetCheckpointKind', {'Weight': 1, 'Random': 1})
             self.checkpoint_kind = random_weight_count(get_kind)[0]
             
+            logger.info(f"Checkpoint selection - Kind: {self.checkpoint_kind}")
+            print.Info(f"Checkpoint selection - Kind",self.checkpoint_kind)
+
             self.fromImg = False
             if self.checkpoint_kind == 'fromImg':
                 self.fromImg = True
                 temp_kinds = dict(get_kind)
                 temp_kinds.pop('fromImg', None)
                 self.checkpoint_kind = random_weight_count(temp_kinds)[0] if temp_kinds else 'Weight'
+                logger.info(f"Checkpoint selection - Kind: {self.checkpoint_kind}")
+                print.Info(f"Checkpoint selection - Kind",self.checkpoint_kind)
 
             self.checkpoint_type = random_weight_count(checkpoint_types)[0]
             names = self.get_now('CheckpointFileNames', default=[])
@@ -75,6 +80,9 @@ class SelectorMixin:
         get_kind = self.get_config('GetCharKind', {'Weight': 1, 'Random': 1})
         self.char_kind = random_weight_count(get_kind)[0]
         names = self.get_now('CharFileNames', default=[])
+
+        logger.info(f"Character selection - Kind: {self.char_kind}")
+        print.Info(f"Character selection - Kind",self.char_kind)
         
         selected_name = None
         if self.char_kind == 'Wildcard' or not names:
@@ -136,6 +144,9 @@ class SelectorMixin:
         self.tive_weight = {}
         self.loras_set = set()
         self.lora_kind = random_weight_count(self.get_config('GetLoraKind', {'Weight': 1, 'Random': 1}))[0]
+
+        logger.info(f"LoRA selection - Kind: {self.lora_kind}")
+        print.Info(f"LoRA selection - Kind",self.lora_kind)
 
         if self.lora_kind == 'Wildcard':
             self.tive_lora = self.get_now('LoraWildcard', default={})

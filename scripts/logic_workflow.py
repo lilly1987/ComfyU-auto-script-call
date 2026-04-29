@@ -165,11 +165,16 @@ class WorkflowMixin:
         p_list, n_list = list(pos_f.values()), list(neg_f.values())
         if random_weight(self.get_config("shuffleWildcard", [False, True])):
             random.shuffle(p_list); random.shuffle(n_list)
-        
+    
         self.set_exists_workflow('positiveWildcard', 'wildcard_text', f",,,,{','.join(p_list)},,,,")
         self.set_exists_workflow('negativeWildcard', 'wildcard_text', f",,,,{','.join(n_list)},,,,")
         # self.set_exists_workflow('positiveWildcard', 'seed', seed_int())
         # self.set_exists_workflow('negativeWildcard', 'seed', seed_int())
+    
+        logger.info(f"Positive Wildcard: {p_list}")
+        logger.info(f"Negative Wildcard: {n_list}")
+        print.Info(f"Positive Wildcard",p_list)
+        print.Info(f"Negative Wildcard",n_list)
 
     def set_save_image(self):
         # 모델 경로 보정 (모드 상관 없이 큐 전송 전 항상 수행)
@@ -187,7 +192,7 @@ class WorkflowMixin:
 
         for i in ['1', '2']: self.set_exists_workflow(f'SaveImage{i}', 'filename_prefix', f"{prefix}-{i}")
         self.set_exists_workflow('SaveVideo', 'filename_prefix', prefix)
-        if self.get_config('noSaveImage1', False): pop_nested(self.workflow_api, 'SaveImage1', "inputs", 'images')
+        if self.get_config('noSaveImage1', False): pop_nested(self.workflow_api, 'SaveImage1') 
 
     def set_setup_workflow_to_workflow_api(self):
         # if self.fromImg: return

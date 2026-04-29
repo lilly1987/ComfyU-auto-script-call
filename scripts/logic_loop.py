@@ -65,7 +65,7 @@ class LoopMixin:
             self.char_loop_cnt = 0
 
         # 워크플로우 템플릿 복사
-        if not self.fromImg:
+        # if not self.fromImg:
             self.copy_workflow_api()
         
         # 2. 캐릭터 변경 주기 판단
