@@ -187,11 +187,15 @@ class SelectorMixin:
             temp_map = {}
             if g_cfg.get('per'):
                 limit = random_min_max(g_cfg.get('perMax', 0))
+                candidates = []
                 for k, v in dic.items():
-                    # if g_cfg.get('perFirsts') and count >= limit: break
                     if v.get('per', 0) > random.random():
                         lora = random_weight(v.get('loras')) if v.get('loras') else f"{g_name}-{k}"
-                        temp_map[lora] = v
+                        candidates.append((lora, v))
+                # lora에서 limit개를 랜덤하게 선택
+                for lora, v in random.sample(candidates, min(limit, len(candidates))):
+                    temp_map[lora] = v
+                
             
             if g_cfg.get('weight'):
                 limit = random_min_max(g_cfg.get('weightMax', 0))
