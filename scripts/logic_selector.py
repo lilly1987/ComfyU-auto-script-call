@@ -179,15 +179,17 @@ class SelectorMixin:
     def _lora_change_weight(self):
         weight_lora = self.get_now('WeightLora', default={})
         for g_name, g_cfg in weight_lora.items():
+            
+            totalMax=random_min_max(g_cfg.get('totalMax', 0)) 
+            if g_cfg.get('total') and totalMax <= 0: continue 
+
             dic = g_cfg.get('dic', {})
             temp_map = {}
             if g_cfg.get('per'):
                 limit = random_min_max(g_cfg.get('perMax', 0))
-                count = 0
                 for k, v in dic.items():
-                    if g_cfg.get('perFirsts') and count >= limit: break
+                    # if g_cfg.get('perFirsts') and count >= limit: break
                     if v.get('per', 0) > random.random():
-                        count += 1
                         lora = random_weight(v.get('loras')) if v.get('loras') else f"{g_name}-{k}"
                         temp_map[lora] = v
             
@@ -198,7 +200,7 @@ class SelectorMixin:
                     lora = random_weight(v.get('loras')) if v.get('loras') else f"{g_name}-{k}"
                     temp_map[lora] = v
 
-            selected = set(random_items_count(temp_map, random_min_max(g_cfg.get('totalMax', 0)))) if g_cfg.get('total') else set(temp_map.keys())
+            selected = set(random_items_count(temp_map, totalMax)) if g_cfg.get('total') else set(temp_map.keys())
             self.loras_set.update(selected)
 
     def _handle_from_img_mode(self) -> bool:
