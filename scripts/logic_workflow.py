@@ -87,11 +87,14 @@ class WorkflowMixin:
         return self.get_now('dicLoraYml', self.lora_tmp, k, default=v)
 
     def set_lora(self):
-        if self.fromImg:           
+        if self.fromImg:
+            self._from_img_char_is_wildcard = False
             for node_id, node_cfg in self.workflow_api.items():
                 inputs = node_cfg.get('inputs', {})
                 class_type = str(node_cfg.get('class_type', ''))
                 if class_type.startswith('LoraLoader'):
+                    if node_id == 'LoraLoader' and self._is_disabled_lora_loader(inputs):
+                        self._from_img_char_is_wildcard = True
                     lname = inputs.get('lora_name')
                     if lname:
                         self.lora_tmp = Path(lname).stem
@@ -176,11 +179,35 @@ class WorkflowMixin:
         # print.Info(f"Positive Wildcard",p_list)
         # print.Info(f"Negative Wildcard",n_list)
 
+    def _is_zero_strength(self, value: Any) -> bool:
+        try:
+            return float(value) == 0.0
+        except (TypeError, ValueError):
+            return False
+
+    def _is_disabled_lora_loader(self, inputs: Dict) -> bool:
+        return (
+            self._is_zero_strength(inputs.get('strength_model')) or
+            self._is_zero_strength(inputs.get('strength_clip'))
+        )
+
+    def _apply_from_img_char_name_for_save(self):
+        if getattr(self, '_from_img_char_is_wildcard', False):
+            self.char_name = 'wildcard'
+            self.no_char = True
+            return
+
+        node = get_nested(self.workflow_api, 'LoraLoader')
+        if isinstance(node, dict) and self._is_disabled_lora_loader(node.get('inputs', {})):
+            self.char_name = 'wildcard'
+            self.no_char = True
+
     def set_save_image(self):
         # 모델 경로 보정 (모드 상관 없이 큐 전송 전 항상 수행)
         
         ts = time.strftime('%Y%m%d-%H%M%S')
         if self.fromImg:
+            self._apply_from_img_char_name_for_save()
             prefix = f"{self.checkpoint_type}/{self.checkpoint_name}/{self.char_name}/{self.checkpoint_name}-{self.char_name}-{ts}-{self.total}"
         else:
             tcp = '=' if self.yml_checkpoint.get('skip') not in (False, None) else '+'
