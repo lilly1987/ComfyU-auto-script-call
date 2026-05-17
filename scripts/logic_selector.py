@@ -264,12 +264,44 @@ class SelectorMixin:
             with urllib_request.urlopen(url, timeout=5) as res:
                 data = json.loads(res.read().decode('utf-8'))
                 if isinstance(data, list):
-                    return data
+                    return self._flatten_model_list(data)
                 if isinstance(data, dict):
-                    return data.get('models', list(data.values()))
+                    return self._flatten_model_list(data.get('models', list(data.values())))
         except Exception as e:
             logger.warning(f"Failed to fetch model list from {url}: {e}")
         return []
+
+    def _flatten_model_list(self, value: Any) -> List[str]:
+        models = []
+        if isinstance(value, str):
+            return [value]
+        if isinstance(value, dict):
+            value = value.values()
+        if isinstance(value, (list, tuple, set)):
+            for item in value:
+                models.extend(self._flatten_model_list(item))
+        return models
+
+    def _normalize_model_path(self, value: str) -> str:
+        return str(value).replace('\\', '/').strip()
+
+    def _model_basename(self, value: str) -> str:
+        return self._normalize_model_path(value).rsplit('/', 1)[-1]
+
+    def _get_from_img_fallback_model(self, class_type: str, input_key: str) -> Optional[str]:
+        from_img_if = self.get_config('fromImgIf', {})
+        if not isinstance(from_img_if, dict):
+            return None
+
+        fallback = None
+        if isinstance(from_img_if.get(class_type), dict):
+            fallback = from_img_if[class_type].get(input_key)
+        if fallback is None:
+            for k, v in from_img_if.items():
+                if class_type.startswith(str(k)) and isinstance(v, dict):
+                    fallback = v.get(input_key)
+                    break
+        return fallback if isinstance(fallback, str) and fallback else None
 
     def _extract_checkpoint_and_char_from_workflow(self, workflow: Dict) -> tuple:
         ct, cn, chn = None, None, None
@@ -322,10 +354,25 @@ class SelectorMixin:
                 current_val = inputs.get(input_key, '')
                 if not current_val or not isinstance(current_val, str): continue
                 
-                name = Path(current_val).name
-                matches = [Path(m).as_posix() for m in m_list if Path(m).name == name]
+                normalized_models = [self._normalize_model_path(m) for m in m_list]
+                current_norm = self._normalize_model_path(current_val)
+                name = self._model_basename(current_val)
+                matches = [m for m in normalized_models if self._model_basename(m) == name]
                 if matches:
                     fixed_path = matches[0]
                     if current_val != fixed_path:
                         inputs[input_key] = fixed_path
                         # print.Info(f"[{class_type}] Path synchronized: {current_val} -> {fixed_path}")
+                    continue
+
+                if current_norm not in normalized_models:
+                    fallback = self._get_from_img_fallback_model(class_type, input_key)
+                    if fallback:
+                        fallback_norm = self._normalize_model_path(fallback)
+                        fallback_name = self._model_basename(fallback)
+                        fallback_matches = [m for m in normalized_models if self._model_basename(m) == fallback_name]
+                        inputs[input_key] = fallback_matches[0] if fallback_matches else fallback_norm
+                        logger.warning(
+                            f"[{class_type}] Model not found: {current_val}. "
+                            f"Fallback applied: {inputs[input_key]}"
+                        )
