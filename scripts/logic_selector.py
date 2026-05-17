@@ -236,7 +236,7 @@ class SelectorMixin:
         return False
 
     def _select_from_img(self, exclude: Optional[Set[str]] = None) -> Optional[str]:
-        path = Path(self.get_config('fromImg', ''))
+        path = Path(self.get_config('fromImgPath', ''))
         if not path.exists(): return None
         ex = {str(Path(p)) for p in exclude} if exclude else set()
         files = [p for p in path.rglob('*.png') if str(p) not in ex]

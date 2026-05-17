@@ -185,11 +185,11 @@ class WorkflowMixin:
         else:
             tcp = '=' if self.yml_checkpoint.get('skip') not in (False, None) else '+'
             tch = '=' if not self.no_char and self.get_now('dicLoraYml', self.char_name, default={}).get('skip') not in (False, None) else '+'
-            tfv = '#' if not self.no_char and self.get_now('dicLoraYml', self.char_name, default={}).get('favorites',0) > 0 else ''
+            tfv = '#' if not self.no_char and self.get_now('dicLoraYml', self.char_name, default={}).get('favorites') not in (False, None) else tch
             cpw = self.yml_checkpoint.get('weight', '')
             chw = self.get_now('dicLoraYml', self.char_name, default={}).get('weight', '') if not self.no_char else ''
             st = ("S" if getattr(self, 'IsStyleLora', False) else "") + ("D" if getattr(self, 'IsDressLora', False) else "")
-            prefix = (f"{self.checkpoint_type}/{self.checkpoint_name}{tcp}{cpw}/{self.char_name}{tch}{chw}{tfv}/"
+            prefix = (f"{self.checkpoint_type}/{self.checkpoint_name}{tcp}{cpw}/{self.char_name}{tch}{chw}/"
                       f"{self.checkpoint_name}{tcp}-{self.char_name}{tch}-{st}-{len(self.loras_set)}-{ts}-{self.total}")
 
         for i in ['1', '2']: self.set_exists_workflow(f'SaveImage{i}', 'filename_prefix', f"{prefix}-{i}")

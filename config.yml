@@ -37,8 +37,12 @@ GetCheckpointKind:
     Skip: 2
     fromImg: 1
 
-fromImg: 'W:\photo\_2d\'
+fromImgPath: 'W:\photo\_2d\'
 fromImgMaxRetries: 100
+fromImgIf: 
+  UltralyticsDetectorProvider:
+    model_name: 'bbox/face_yolov9c.pt'
+    
 
 CheckpointDbWeight: 3 # GetCharKind 에서 DB일 경우 최대 가중치
 CheckpointDbWeightMax: 9 # GetCharKind 에서 DB일 경우 최대 가중치
