@@ -222,7 +222,7 @@ class SelectorMixin:
                     inputs = node.get('inputs', {})
                     lname = inputs.get('lora_name')
                     if lname and not self._validate_lora_file(lname):
-                        matches = [Path(m).as_posix() for m in lora_list if Path(m).name == Path(lname).name]
+                        matches = [m for m in lora_list if self._model_basename(m) == self._model_basename(lname)]
                         if matches: inputs['lora_name'] = matches[0]
                         else: all_valid = False; break
             
@@ -360,19 +360,23 @@ class SelectorMixin:
                 matches = [m for m in normalized_models if self._model_basename(m) == name]
                 if matches:
                     fixed_path = matches[0]
-                    if current_val != fixed_path:
+                    if current_norm != fixed_path:
                         inputs[input_key] = fixed_path
                         # print.Info(f"[{class_type}] Path synchronized: {current_val} -> {fixed_path}")
+                    elif current_val != current_norm:
+                        inputs[input_key] = current_norm
                     continue
 
                 if current_norm not in normalized_models:
                     fallback = self._get_from_img_fallback_model(class_type, input_key)
                     if fallback:
                         fallback_norm = self._normalize_model_path(fallback)
-                        fallback_name = self._model_basename(fallback)
+                        fallback_name = self._model_basename(fallback_norm)
                         fallback_matches = [m for m in normalized_models if self._model_basename(m) == fallback_name]
                         inputs[input_key] = fallback_matches[0] if fallback_matches else fallback_norm
                         logger.warning(
                             f"[{class_type}] Model not found: {current_val}. "
                             f"Fallback applied: {inputs[input_key]}"
                         )
+                elif current_val != current_norm:
+                    inputs[input_key] = current_norm
