@@ -90,7 +90,14 @@ class SelectorMixin:
             return
 
         if self.char_kind == 'Favorites':
-            favs = [n for n in names if self.get_now('dicLoraYml', n, default={}).get('favorites')]
+            favs = []
+            for n in names:
+                lora_data = self.get_now('dicLoraYml', n) # Get data, default is None
+                if lora_data is None:
+                    print.Warn(f"Warning: 'dicLoraYml' data for character '{n}' is None. This character will be skipped for 'Favorites' selection.")
+                    continue
+                if (lora_data or {}).get('favorites'): # Ensure lora_data is a dict for .get()
+                    favs.append(n)
             selected_name = random.choice(favs) if favs else None
         elif self.char_kind == 'DB' and self.db:
             counts = self.db.get_char_counts(self.checkpoint_type)
