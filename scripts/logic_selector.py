@@ -60,6 +60,9 @@ class SelectorMixin:
             elif self.checkpoint_kind == 'Cycle':
                 selected = self._cycle_sample('CheckpointCyclePool', names, 1)
                 self.checkpoint_name = selected[0] if selected else random.choice(names)
+            elif self.checkpoint_kind == 'Skip':
+                skips = [n for n in names if (self.get_now('dicCheckpointYml', n) or {}).get('skip') not in (False, None)]
+                self.checkpoint_name = random.choice(skips) if skips else random.choice(names)
             else: # Weight / Random
                 weight_map = self.get_now('WeightCheckpoint', default={})
                 if self.get_config('CheckpointWeightPer', 0.5) > random.random() and weight_map:
@@ -89,16 +92,30 @@ class SelectorMixin:
             self._apply_selected_char(None, use_wildcard=True)
             return
 
-        if self.char_kind == 'Favorites':
-            favs = []
+        # 플래그 기반 필터링 모드 (Favorites, Skip)
+        if self.char_kind in ['Favorites', 'Favorites_Weight', 'Skip', 'Skip_Weight']:
+            key = 'favorites' if 'Favorites' in self.char_kind else 'skip'
+            candidates = []
             for n in names:
-                lora_data = self.get_now('dicLoraYml', n) # Get data, default is None
-                if lora_data is None:
-                    print.Warn(f"Warning: 'dicLoraYml' data for character '{n}' is None. This character will be skipped for 'Favorites' selection.")
-                    continue
-                if (lora_data or {}).get('favorites'): # Ensure lora_data is a dict for .get()
-                    favs.append(n)
-            selected_name = random.choice(favs) if favs else None
+                yml_data = self.get_now('dicLoraYml', n)
+                if yml_data and yml_data.get(key) not in (False, None):
+                    candidates.append(n)
+            
+            if candidates:
+                if 'Weight' in self.char_kind:
+                    weight_char = self.get_now('WeightChar', default={})
+                    # 후보군에 대해서만 가중치 맵을 재구성 (없을 경우 기본값 적용)
+                    target_weights = {
+                        n: weight_char.get(n, self.get_config('CharWeightDefault', 3)) 
+                        for n in candidates
+                    }
+                    selected_name = random_weight_count(target_weights)[0]
+                else:
+                    selected_name = random.choice(candidates)
+            else:
+                print.Warn(f"No characters with '{key}' flag found. Kind: {self.char_kind}")
+
+        # 데이터베이스/순환/가중치/랜덤 모드
         elif self.char_kind == 'DB' and self.db:
             counts = self.db.get_char_counts(self.checkpoint_type)
             max_w, min_w = self.get_config('CharDbWeightMax', 100), self.get_config('CharDbWeightMin', 1)
@@ -107,6 +124,11 @@ class SelectorMixin:
         elif self.char_kind == 'Cycle':
             selected = self._cycle_sample('CharCyclePool', names, 1)
             selected_name = selected[0] if selected else None
+        elif self.char_kind == 'Weight':
+            weight_char = self.get_now('WeightChar', default={})
+            selected_name = random_weight_count(weight_char)[0] if weight_char else None
+        elif self.char_kind == 'Random':
+            selected_name = random.choice(names)
         
         if not selected_name: # Fallback
             weight_char = self.get_now('WeightChar', default={})
