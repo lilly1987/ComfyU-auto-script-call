@@ -216,7 +216,7 @@ class WorkflowMixin:
             cpw = self.yml_checkpoint.get('weight', '')
             chw = self.get_now('dicLoraYml', self.char_name, default={}).get('weight', '') if not self.no_char else ''
             st = ("S" if getattr(self, 'IsStyleLora', False) else "") + ("D" if getattr(self, 'IsDressLora', False) else "")
-            prefix = (f"{self.checkpoint_type}/{self.checkpoint_name}{tcp}{cpw}/{self.char_name}{tch}{chw}/"
+            prefix = (f"{self.checkpoint_type}/{self.checkpoint_name}{tcp}{cpw}/{self.char_name}{tfv}{chw}/"
                       f"{self.checkpoint_name}{tcp}-{self.char_name}{tch}-{st}-{len(self.loras_set)}-{ts}-{self.total}")
 
         for i in ['1', '2']: self.set_exists_workflow(f'SaveImage{i}', 'filename_prefix', f"{prefix}-{i}")
