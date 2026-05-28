@@ -200,10 +200,6 @@ class SelectorMixin:
             self._lora_change_weight()
 
         print.Info(f"Loras: {self.loras_set}")
-        for lora in self.loras_set:
-            dic = self.get_now('dicLoraYml', lora, default={})
-            update_dict_key(self.tive_weight, dic, 'positive')
-            update_dict_key(self.tive_weight, dic, 'negative')
 
     def _lora_change_weight(self):
         weight_lora = self.get_now('WeightLora', default={})

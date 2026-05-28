@@ -14,7 +14,10 @@ class WorkflowMixin:
     """ComfyUI 워크플로우 수정을 담당하는 Mixin"""
 
     def copy_workflow_api(self):
-        if self.fromImg: return
+
+        if self.fromImg: 
+            
+            return
         self.workflow_api = copy.deepcopy(self.get_now('workflow_api', default={}))
 
     def set_tive(self, num_name: str, dic: Dict, reset: bool = False):
@@ -57,7 +60,8 @@ class WorkflowMixin:
     def set_checkpoint_loader_simple(self):
         self.set_exists_workflow('CheckpointLoaderSimple', 'ckpt_name', self.checkpoint_path)
         # 정보성 텍스트 초기화 및 체크포인트 경로 기록
-        self.set_exists_workflow('PrimitiveStringMultilineInfo', 'value', str(self.checkpoint_path) + " \n")
+        self.set_exists_workflow('PrimitiveStringMultilineInfo', 'value', str(self.checkpoint_kind) + " \n")
+        self.add_exists_workflow('PrimitiveStringMultilineInfo', 'value', str(self.checkpoint_path) + " \n")
         if not self.fromImg:
             self.yml_checkpoint = self.get_now('dicCheckpointYml', self.checkpoint_name, default={})
 
@@ -72,6 +76,7 @@ class WorkflowMixin:
         if not self.fromImg: 
             self.set_exists_workflow('LoraLoader', 'lora_name', self.char_path)
         # 캐릭터 LoRA 경로 추가
+        self.add_exists_workflow('PrimitiveStringMultilineInfo', 'value', str(self.char_kind) + " \n")
         self.add_exists_workflow('PrimitiveStringMultilineInfo', 'value', str(self.char_path) + " \n")
         # self.set_exists_workflow('LoraLoader', 'seed', seed_int())
         if self.no_char:
@@ -87,6 +92,9 @@ class WorkflowMixin:
         return self.get_now('dicLoraYml', self.lora_tmp, k, default=v)
 
     def set_lora(self):
+        if self.lora_kind != 'Wildcard':
+            self.tive_lora = {}
+        
         if self.fromImg:
             self._from_img_char_is_wildcard = False
             for node_id, node_cfg in self.workflow_api.items():
@@ -110,7 +118,7 @@ class WorkflowMixin:
         h_model_conn = ['ModelSamplingDiscrete', 0] if isinstance(dic_cp.get('ModelSamplingDiscrete'), dict) else self.get_workflow(next_key, 'model')
         h_clip_conn = ['CLIPSetLastLayer', 0] if isinstance(dic_cp.get('CLIPSetLastLayer'), dict) else self.get_workflow(next_key, 'clip')
 
-        self.tive_lora = {}
+        
         self.IsStyleLora, self.IsDressLora = False, False
 
         for lora in self.loras_set:
@@ -130,6 +138,7 @@ class WorkflowMixin:
             # self.set_exists_workflow(tmp_key, 'seed', seed_int())
             self.set_exists_workflow(tmp_key, 'lora_name', self.get_now('LoraFileDics', lora))
             # 추가된 LoRA 경로들 기록
+            self.add_exists_workflow('PrimitiveStringMultilineInfo', 'value', str(self.lora_kind) + " \n")
             self.add_exists_workflow('PrimitiveStringMultilineInfo', 'value', str(self.get_now('LoraFileDics', lora)) + " \n")
             
             self.apply_workflow_settings(tmp_key, ['strength_model', 'strength_clip', 'A', 'B'], value_func=self.set_lora_sub)
@@ -150,17 +159,29 @@ class WorkflowMixin:
             if 'seed' in inputs: inputs['seed'] = seed_int()
 
     def set_wildcard(self):
-        if self.fromImg: return
+        
         self.positive_dics, self.negative_dics = {}, {}
+        pos_f, neg_f = {}, {}
+
+        # if self.get_config("wildcardPrint", False):
+        #     print.Config('workflow_api', self.positive_dics)  
+
+        if self.fromImg: 
+            self.set_exists_workflow('PrimitiveStringMultilineP', 'value', yaml.dump(pos_f, allow_unicode=True))
+            self.set_exists_workflow('PrimitiveStringMultilineN', 'value', yaml.dump(neg_f, allow_unicode=True))
+            return
+        
         if self.yml_checkpoint.get('Setup', True): self.set_tive('setup', self.get_now('setupWildcard', default={}))
         self.set_tive('Checkpoint', self.yml_checkpoint)
         self.set_tive('Char', self.get_now('CharWildcard') if self.no_char else self.get_now('dicLoraYml', self.char_name, default={}))
         self.set_tive('Weight', self.tive_weight)
         self.set_tive('Lora', self.tive_lora)
 
-        pos_f, neg_f = {}, {}
         for k in self.get_config("SetWildcardSort", ['setup', 'Checkpoint', 'Char', 'Weight', 'Lora']):
-            update_dict(pos_f, self.positive_dics.get(k, {})); update_dict(neg_f, self.negative_dics.get(k, {}))
+            print.Config(k,self.positive_dics.get(k, {}))
+            update_dict(pos_f, self.positive_dics.get(k, {})); 
+            update_dict(neg_f, self.negative_dics.get(k, {}))
+
 
         self.set_exists_workflow('PrimitiveStringMultilineP', 'value', yaml.dump(pos_f, allow_unicode=True))
         self.set_exists_workflow('PrimitiveStringMultilineN', 'value', yaml.dump(neg_f, allow_unicode=True))
@@ -168,6 +189,7 @@ class WorkflowMixin:
         p_list, n_list = list(pos_f.values()), list(neg_f.values())
         if random_weight(self.get_config("shuffleWildcard", [False, True])):
             random.shuffle(p_list); random.shuffle(n_list)
+            
     
         self.set_exists_workflow('positiveWildcard', 'wildcard_text', f",,,,{','.join(p_list)},,,,")
         self.set_exists_workflow('negativeWildcard', 'wildcard_text', f",,,,{','.join(n_list)},,,,")
