@@ -171,16 +171,26 @@ class WorkflowMixin:
             self.set_exists_workflow('PrimitiveStringMultilineN', 'value', yaml.dump(neg_f, allow_unicode=True))
             return
         
-        if self.yml_checkpoint.get('Setup', True): self.set_tive('setup', self.get_now('setupWildcard', default={}))
-        self.set_tive('Checkpoint', self.yml_checkpoint)
-        self.set_tive('Char', self.get_now('CharWildcard') if self.no_char else self.get_now('dicLoraYml', self.char_name, default={}))
-        self.set_tive('Weight', self.tive_weight)
-        self.set_tive('Lora', self.tive_lora)
+        if self.yml_checkpoint.get('Setup', True):
+            setup_w = self.get_now('setupWildcard', default={})
+            if setup_w: self.set_tive('setup', setup_w)
+
+        if self.yml_checkpoint: self.set_tive('Checkpoint', self.yml_checkpoint)
+        
+        char_dic = self.get_now('CharWildcard') if self.no_char else self.get_now('dicLoraYml', self.char_name, default={})
+        if char_dic: self.set_tive('Char', char_dic)
+            
+        if self.tive_weight: self.set_tive('Weight', self.tive_weight)
+        if self.tive_lora: self.set_tive('Lora', self.tive_lora)
 
         for k in self.get_config("SetWildcardSort", ['setup', 'Checkpoint', 'Char', 'Weight', 'Lora']):
-            print.Config(k,self.positive_dics.get(k, {}))
-            update_dict(pos_f, self.positive_dics.get(k, {})); 
-            update_dict(neg_f, self.negative_dics.get(k, {}))
+            p_dic = self.positive_dics.get(k)
+            n_dic = self.negative_dics.get(k)
+            if p_dic:
+                print.Config(k, p_dic)
+                update_dict(pos_f, p_dic)
+            if n_dic:
+                update_dict(neg_f, n_dic)
 
 
         self.set_exists_workflow('PrimitiveStringMultilineP', 'value', yaml.dump(pos_f, allow_unicode=True))
