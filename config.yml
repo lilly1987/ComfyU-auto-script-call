@@ -65,7 +65,7 @@ CharDbWeightMin: 1 # GetCharKind 에서 DB일 경우 최소 가중치
 
 CharWildcard: # Char 파일을 안쓸 경우 Wildcard 설정
   positive:
-    char: '/**/__char__,/**/'
+    char: '/**/__char_set__,/**/'
   negative:
     char: ''
 
