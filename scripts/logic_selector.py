@@ -52,7 +52,32 @@ class SelectorMixin:
                 retry_count += 1
                 continue
 
-            if self.checkpoint_kind == 'DB' and self.db:
+            if self.checkpoint_kind in ['Favorites', 'Favorites_Weight', 'Skip', 'Skip_Weight']:
+                key = 'favorites' if 'Favorites' in self.checkpoint_kind else 'skip'
+                candidates = []
+                for n in names:
+                    yml_data = self.get_now('dicCheckpointYml', n)
+                    if yml_data and yml_data.get(key) not in (False, None):
+                        candidates.append(n)
+
+                if candidates:
+                    if 'Weight' in self.checkpoint_kind:
+                        weight_map = self.get_now('WeightCheckpoint', default={})
+                        target_weights = {
+                            n: weight_map.get(n, self.get_config('CheckpointWeightDefault', 3))
+                            for n in candidates
+                        }
+                        self.checkpoint_name = random_weight_count(target_weights)[0]
+                    else:
+                        self.checkpoint_name = random.choice(candidates)
+                else:
+                    print.Warn(f"No checkpoints with '{key}' flag found. Kind: {self.checkpoint_kind}")
+                    weight_map = self.get_now('WeightCheckpoint', default={})
+                    if self.get_config('CheckpointWeightPer', 0.5) > random.random() and weight_map:
+                        self.checkpoint_name = random_weight_count(weight_map)[0]
+                    else:
+                        self.checkpoint_name = random.choice(names)
+            elif self.checkpoint_kind == 'DB' and self.db:
                 counts = self.db.get_checkpoint_counts(self.checkpoint_type)
                 max_w, min_w = self.get_config('CheckpointDbWeightMax', 100), self.get_config('CheckpointDbWeightMin', 1)
                 db_weights = {n: max(min_w, min(max_w - counts.get(n, 0), max_w)) for n in names}
@@ -60,9 +85,6 @@ class SelectorMixin:
             elif self.checkpoint_kind == 'Cycle':
                 selected = self._cycle_sample('CheckpointCyclePool', names, 1)
                 self.checkpoint_name = selected[0] if selected else random.choice(names)
-            elif self.checkpoint_kind == 'Skip':
-                skips = [n for n in names if (self.get_now('dicCheckpointYml', n) or {}).get('skip') not in (False, None)]
-                self.checkpoint_name = random.choice(skips) if skips else random.choice(names)
             else: # Weight / Random
                 weight_map = self.get_now('WeightCheckpoint', default={})
                 if self.get_config('CheckpointWeightPer', 0.5) > random.random() and weight_map:

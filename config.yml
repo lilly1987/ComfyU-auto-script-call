@@ -9,6 +9,7 @@ CheckpointTypes: # Checkpoint 및 Lora 종류. 뒤의 숫자는 사용할 가중
 
 # --- 경로 설정 ---
 CheckpointPath: ComfyUI/models/checkpoints # Checkpoint 폴더. 변경시 재실행 필요.
+unetPath: ComfyUI/models/diffusion_models # Checkpoint 폴더. 변경시 재실행 필요.
 LoraPath: ComfyUI/models/loras # Lora 폴더. 변경시 재실행 필요.
 LoraEtcPath: etc # LoraPath / etc 폴더. 변경시 재실행 필요. 하위폴더는 인식 안함.
 LoraCharPath: char # LoraPath 안의 char 폴더. 변경시 재실행 필요. 하위폴더는 인식 안함.
@@ -34,10 +35,13 @@ GetCheckpointKind:
     Weight: 2 # {type}/Checkpoint/*.yml , {type}/WeightChar.yml 순으로 찿아서 참조
     Random: 1 # 파일 목록중에서 랜덤 선택
     Cycle: 1
-    Skip: 2
+    Skip: 1
+    Skip_Weight: 2
+    Favorites: 3
+    Favorites_Weight: 3
     fromImg: 1
 
-fromImgPath: 'W:\photo\_2d\'
+fromImgPath: 'Y:\photo\_2d\'
 fromImgMaxRetries: 100
 fromImgIf: 
   UltralyticsDetectorProvider:
@@ -52,13 +56,13 @@ CheckpointDbWeightMin: 1 # GetCharKind 에서 DB일 경우 최소 가중치
 GetCharKind:
     Wildcard: 1
     DB: 1
-    Weight: 1 # {type}/lora/*.yml , {type}/WeightChar.yml 순으로 찿아서 참조
+    Weight: 2 # {type}/lora/*.yml , {type}/WeightChar.yml 순으로 찿아서 참조
     Random: 1 # 파일 목록중에서 랜덤 선택
     Cycle: 1
     Skip: 1
-    Skip_Weight: 1
-    Favorites: 1
-    Favorites_Weight: 1
+    Skip_Weight: 2
+    Favorites: 3
+    Favorites_Weight: 3
 
 CharDbWeightMax: 9 # GetCharKind 에서 DB일 경우 최대 가중치
 CharDbWeightMin: 1 # GetCharKind 에서 DB일 경우 최소 가중치
