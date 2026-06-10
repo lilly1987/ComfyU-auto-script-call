@@ -45,8 +45,10 @@ class DataLoaderMixin:
             set_nested(self.type_dics, lora_w, ct, 'LoraWildcard')
 
     def _get_safetensors_checkpoint(self, checkpoint_type: str):
-        base = Path(self.get_config('base_dir'), self.get_config('CheckpointPath')) / checkpoint_type
-        f_dict, f_list, f_names = get_file_dict_list(base, Path(self.get_config('base_dir'), self.get_config('CheckpointPath')))
+        model_path_key = 'unetPath' if checkpoint_type == 'Anime' else 'CheckpointPath'
+        model_base = Path(self.get_config('base_dir'), self.get_config(model_path_key))
+        base = model_base if checkpoint_type == 'Anime' else model_base / checkpoint_type
+        f_dict, f_list, f_names = get_file_dict_list(base, model_base)
         set_nested(self.type_dics, f_dict, checkpoint_type, 'CheckpointFileDics')
         set_nested(self.type_dics, f_list, checkpoint_type, 'CheckpointFileLists')
         set_nested(self.type_dics, f_names, checkpoint_type, 'CheckpointFileNames')

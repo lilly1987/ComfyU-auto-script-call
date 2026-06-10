@@ -4,6 +4,7 @@ import time
 from pathlib import Path
 from watchdog.events import FileSystemEvent
 from utils.file_handler import FileEventHandler, FileObserver
+from utils.dict_utils import get_nested, set_nested
 from utils.print_log import print
 
 class ObserverMixin:
@@ -25,6 +26,12 @@ class ObserverMixin:
             FileEventHandler(self._checkpoint_path_callback),
             recursive=True
         )
+        if 'Anime' in self.checkpoint_types:
+            self.file_observer.watch(
+                str(Path(self.get_config('base_dir'), self.get_config('unetPath'))),
+                FileEventHandler(self._unet_path_callback),
+                recursive=True
+            )
         # LoRA 경로 감시
         self.file_observer.watch(
             str(Path(self.get_config('base_dir'), self.get_config('LoraPath'))),
@@ -54,9 +61,9 @@ class ObserverMixin:
             rpath = Path(path.name)
         
         name = Path(rpath).stem
-        file_dics = self.get_now(dics_key, default={})
-        file_lists = self.get_now(lists_key, default=[])
-        file_names = self.get_now(names_key, default=[])
+        file_dics = get_nested(self.type_dics, checkpoint_type, dics_key, default={})
+        file_lists = get_nested(self.type_dics, checkpoint_type, lists_key, default=[])
+        file_names = get_nested(self.type_dics, checkpoint_type, names_key, default=[])
         spath = str(rpath)
         
         if event_type == 'deleted':
@@ -64,13 +71,13 @@ class ObserverMixin:
             if spath in file_lists: file_lists.remove(spath)
             if name in file_names: file_names.remove(name)
         elif event_type == 'created':
-            file_dics[name] = rpath
+            file_dics[name] = spath
             if spath not in file_lists: file_lists.append(spath)
             if name not in file_names: file_names.append(name)
         
-        self.set_now(file_dics, dics_key)
-        self.set_now(file_lists, lists_key)
-        self.set_now(file_names, names_key)
+        set_nested(self.type_dics, file_dics, checkpoint_type, dics_key)
+        set_nested(self.type_dics, file_lists, checkpoint_type, lists_key)
+        set_nested(self.type_dics, file_names, checkpoint_type, names_key)
 
     def _wait_for_stable_file(self, path: Path, stable_time: float = 0.5, timeout: float = 5.0) -> bool:
         """파일 쓰기가 완료될 때까지 대기"""
@@ -149,6 +156,23 @@ class ObserverMixin:
                                        'CheckpointFileLists', 'CheckpointFileNames')
         except Exception as e: print(f"Checkpoint observer error: {e}")
             
+
+    def _unet_path_callback(self, event: FileSystemEvent):
+        """UNET 파일 추가/삭제 감지"""
+        try:
+            if 'Anime' not in self.checkpoint_types:
+                return
+            path = Path(event.src_path)
+            config_path = Path(self.get_config('base_dir'), self.get_config('unetPath'))
+            if not fnmatch.fnmatch(str(path), str(config_path / '*.safetensors')): return
+            if event.event_type not in {'created', 'deleted'}: return
+            if not self._should_process_event(path, event.event_type): return
+            if event.event_type == 'created' and not self._wait_for_stable_file(path): return
+
+            self.update_safetensors(path, 'Anime', event.event_type,
+                                    'unetPath', 'CheckpointFileDics',
+                                    'CheckpointFileLists', 'CheckpointFileNames')
+        except Exception as e: print(f"UNET observer error: {e}")
 
     def _lora_path_callback(self, event: FileSystemEvent):
         """LoRA 파일 추가/삭제 감지"""
