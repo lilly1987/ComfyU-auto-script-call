@@ -98,6 +98,7 @@ LoraCharPath: char # LoraPath 안의 char 폴더. 변경시 재실행 필요. �
 CheckpointTypes: # Checkpoint 및 Lora 종류. 뒤의 숫자는 사용할 가중치. 키 추가시 재실행 필요. 가중치는 실시간 반영
   IL: 2
   Pony: 1
+  Anime: 1
 safetensorsFile: '*.safetensors' # Checkpoint 및 Lora 파일 확장자.
 workflow_api: workflow_api.json # ComfyUI 로 보낼 workflow api 파일. dataPath+CheckpointTypes에 넣음
 url: http://127.0.0.1:8188/prompt # ComfyUI 로 보낼 url. ComfyUI가 실행중이어야 함
@@ -111,7 +112,7 @@ noCharPer: 0.5 # Char 파일을 안쓸 확률. 안쓸경우 CharWeightPer 무시
 noCharGetDb: 0.75 # noCharPer를 안쓸 경우 DatabaseHandler에서 참조할 확률
 noCharGetDbWeightMax: 100 # noCharPer를 안쓸 경우 최대 가중치
 noCharGetDbWeightMin: 1 # noCharPer를 안쓸 경우 최소 가중치
-noCharWildcard: # Char 파일을 안쓸 경우 Wildcard 설정
+CharWildcard: # Char 파일을 안쓸 경우 Wildcard 설정
   positive:
     char: ' , '
   negative:
@@ -122,11 +123,11 @@ noLoraGetDb: 0.75 # noLoraPer를 안쓸 경우 DatabaseHandler에서 참조할 �
 noLoraGetDbWeightMax: 100 # noLoraPer를 안쓸 경우 최대 가중치
 noLoraGetDbWeightMin: 1 # noLoraPer를 안쓸 경우 최소 가중치
 noLoraGetDbCnt: [3, 6] # DatabaseHandler에서 가져가 쓸 갯수
-noLoraWildcard: # Lora 파일을 안쓸 경우 Wildcard 설정
+LoraWildcard: # Lora 파일을 안쓸 경우 Wildcard 설정
   positive:
-    noLora: '/**/__action__,/**/'
+    lora: '/**/__action__,/**/'
   negative:
-    noLora: ''
+    lora: ''
 # --- Weight 설정 ---
 CheckpointWeightPer: 0.5 # WeightCheckpoint.yml 파일을 쓸 확률
 CharWeightPer: 0.75 # char weight를 쓸 확률. 가중치는 WeightChar.yml 파일과 [dataPath]/[CheckpointType]\lora\*.yml파일의 weight 값을 씀

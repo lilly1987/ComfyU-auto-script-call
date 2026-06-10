@@ -6,7 +6,7 @@ import os
 import yaml
 from pathlib import Path
 from typing import Dict, List, Optional, Any
-
+from utils.print_log import print, logger
 
 class ConfigLoader:
     """설정 파일을 로드하고 관리하는 클래스"""
@@ -19,7 +19,7 @@ class ConfigLoader:
         if config_path is None:
             script_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
             config_path = os.path.join(script_dir, 'config.yml')
-        
+        print(f"🔧 설정 파일 경로: {config_path}")
         self.config_path = Path(config_path)
         self._config: Dict[str, Any] = {}
         self.load()
@@ -27,6 +27,7 @@ class ConfigLoader:
     def load(self) -> Dict[str, Any]:
         """설정 파일을 로드합니다."""
         if not self.config_path.exists():
+            print(f"  오류: 설정 파일을 찾을 수 없습니다: {self.config_path}")
             return {}
         
         try:

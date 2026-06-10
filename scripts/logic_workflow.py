@@ -237,11 +237,12 @@ class WorkflowMixin:
 
     def set_save_image(self):
         # 모델 경로 보정 (모드 상관 없이 큐 전송 전 항상 수행)
-        
+        self.prefix = ''
         ts = time.strftime('%Y%m%d-%H%M%S')
         if self.fromImg:
             self._apply_from_img_char_name_for_save()
-            prefix = f"{self.checkpoint_type}/{self.checkpoint_name}/{self.char_name}/{self.checkpoint_name}-{self.char_name}-{ts}-{self.total}"
+            self.prefix = f"{self.checkpoint_type}/{self.checkpoint_name}/{self.char_name}/{self.checkpoint_name}-{self.char_name}-{ts}-{self.total}"
+            self.prefix_name = f"{self.checkpoint_name}-{self.char_name}-{ts}-{self.total}"
         else:
             tcp = '=' if self.yml_checkpoint.get('skip') not in (False, None) else '+'
             tch = '=' if not self.no_char and self.get_now('dicLoraYml', self.char_name, default={}).get('skip') not in (False, None) else '+'
@@ -249,12 +250,14 @@ class WorkflowMixin:
             cpw = self.yml_checkpoint.get('weight', '')
             chw = self.get_now('dicLoraYml', self.char_name, default={}).get('weight', '') if not self.no_char else ''
             st = ("S" if getattr(self, 'IsStyleLora', False) else "") + ("D" if getattr(self, 'IsDressLora', False) else "")
-            prefix = (f"{self.checkpoint_type}/{self.checkpoint_name}{tcp}{cpw}/{self.char_name}{tfv}{chw}/"
+            self.prefix = (f"{self.checkpoint_type}/{self.checkpoint_name}{tcp}{cpw}/{self.char_name}{tfv}{chw}/"
                       f"{self.checkpoint_name}{tcp}-{self.char_name}{tch}-{st}-{len(self.loras_set)}-{ts}-{self.total}")
+            self.prefix_name = f"{self.checkpoint_name}{tcp}-{self.char_name}{tch}-{st}-{len(self.loras_set)}-{ts}-{self.total}"
 
-        for i in ['1', '2']: self.set_exists_workflow(f'SaveImage{i}', 'filename_prefix', f"{prefix}-{i}")
-        self.set_exists_workflow('SaveVideo', 'filename_prefix', prefix)
+        for i in ['1', '2']: self.set_exists_workflow(f'SaveImage{i}', 'filename_prefix', f"{self.prefix}-{i}")
+        self.set_exists_workflow('SaveVideo', 'filename_prefix', self.prefix)
         if self.get_config('noSaveImage1', False): pop_nested(self.workflow_api, 'SaveImage1') 
+        print.Value('SavePrefix', self.prefix_name)
 
     def set_setup_workflow_to_workflow_api(self):
         # if self.fromImg: return

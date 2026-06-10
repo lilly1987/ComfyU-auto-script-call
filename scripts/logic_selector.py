@@ -211,13 +211,13 @@ class SelectorMixin:
             max_w, min_w = self.get_config('LoraDbWeightMax', 100), self.get_config('LoraDbWeightMin', 1)
             db_weights = {n: max(min_w, min(max_w - counts.get(n, 0), max_w)) for n in names}
             cnt = random_min_max(self.get_config('LoraDbCnt', [1, 3]))
-            self.loras_set = set(random_weight_count(db_weights, count=min(cnt, len(db_weights))))
-        elif self.lora_kind in ['Random', 'Cycle']:
+            self.loras_set = set(random_weight_count(db_weights, count=min(cnt, len(db_weights))))        
+        elif self.lora_kind == 'Random':
             cnt = random_min_max(self.get_config('LoraRandomCnt', [1, 3]))
-            if self.lora_kind == 'Random':
-                self.loras_set = set(random.sample(list(names), min(cnt, len(names))))
-            else:
-                self.loras_set = set(self._cycle_sample('LoraCyclePool', names, cnt))
+            self.loras_set = set(random.sample(list(names), min(cnt, len(names))))
+        elif self.lora_kind == 'Cycle':
+            cnt = random_min_max(self.get_config('LoraCycleCnt', [1, 3]))
+            self.loras_set = set(self._cycle_sample('LoraCyclePool', names, cnt))
         elif self.lora_kind == 'Weight':
             self._lora_change_weight()
 

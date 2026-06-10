@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import json
 import time
 import datetime
 from pathlib import Path
@@ -94,8 +95,14 @@ class LoopMixin:
         
         # 로깅 및 디버그 정보 출력
         if self.get_config("WorkflowPrint", False):
-            print.Config('workflow_api', self.workflow_api)            
+            print.Config('workflow_api', self.workflow_api)        
+            logger.debug(f"Workflow API: {self.workflow_api}")    
         
+        if self.get_config("WorkflowSave", False):
+            with open("log/" + self.prefix_name + ".json", "w", encoding="utf-8") as f:
+                json.dump(self.workflow_api, f, indent=2, ensure_ascii=False)
+
+
         # 루프 한계값 동적 로드 (숫자 또는 리스트 기반 랜덤)
         self.checkpoint_loop = random_min_max(self.get_config("CheckpointLoop", 1))
         self.char_loop = random_min_max(self.get_config("CharLoop", 1))

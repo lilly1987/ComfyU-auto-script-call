@@ -5,7 +5,7 @@ base_dir: W:\ComfyUI_windows_portable  # 작업 디렉토리
 # --- 처리할 타입 리스트 ---
 CheckpointTypes: # Checkpoint 및 Lora 종류. 뒤의 숫자는 사용할 가중치. 키 추가시 재실행 필요. 가중치는 실시간 반영
   IL: 1
-  Anime: 10
+  Anime: 1
   # Pony: 1
 
 # --- 경로 설정 ---
@@ -14,6 +14,7 @@ unetPath: ComfyUI/models/diffusion_models # Checkpoint 폴더. 변경시 재실�
 LoraPath: ComfyUI/models/loras # Lora 폴더. 변경시 재실행 필요.
 LoraEtcPath: etc # LoraPath / etc 폴더. 변경시 재실행 필요. 하위폴더는 인식 안함.
 LoraCharPath: char # LoraPath 안의 char 폴더. 변경시 재실행 필요. 하위폴더는 인식 안함.
+# UNUSED: 현재 코드는 get_file_dict_list()에서 '*.safetensors'를 하드코딩해서 이 값을 읽지 않음.
 safetensorsFile: '*.safetensors' # Checkpoint 및 Lora 파일 확장자.
 workflow_api: workflow_api.json # ComfyUI 로 보낼 workflow api 파일. dataPath+CheckpointTypes에 넣음
 url: http://127.0.0.1:8188/prompt # ComfyUI 로 보낼 url. ComfyUI가 실행중이어야 함
@@ -49,6 +50,7 @@ fromImgIf:
     model_name: 'bbox/face_yolov9c.pt'
     
 
+# UNUSED: DB 선택 가중치는 CheckpointDbWeightMax/Min만 사용하고 이 값은 읽지 않음.
 CheckpointDbWeight: 3 # GetCharKind 에서 DB일 경우 최대 가중치
 CheckpointDbWeightMax: 9 # GetCharKind 에서 DB일 경우 최대 가중치
 CheckpointDbWeightMin: 1 # GetCharKind 에서 DB일 경우 최소 가중치
@@ -70,7 +72,7 @@ CharDbWeightMin: 1 # GetCharKind 에서 DB일 경우 최소 가중치
 
 CharWildcard: # Char 파일을 안쓸 경우 Wildcard 설정
   positive:
-    char: '/**/__char_set__,/**/'
+    char: '/**/{__danbooru_female_character_my__|__danbooru_female_character_my_simple__},/**/'
   negative:
     char: ''
 
@@ -84,9 +86,9 @@ GetLoraKind:
 
 LoraWildcard: # GetLoraKind 에서 Wildcard 경우
   positive:
-    Wildcard: '/**/__action__,/**/'
+    action_set: '/**/{__action_set/action_set__| , },/**/'
   negative:
-    Wildcard: ''
+    action_set: ''
 
 # LoraWildcardEtc: # DB Random Cycle
   # positive:
@@ -100,6 +102,7 @@ LoraDbCnt: [1,2] # GetLoraKind 에서 DB일 경우 DatabaseHandler에서 가져�
 
 LoraRandomCnt: [1,2] # GetLoraKind 에서 Random일 경우 목록에서 가져가 쓸 갯수
 
+# UNUSED: Lora Cycle도 현재 logic_selector.py에서 LoraRandomCnt를 사용함.
 LoraCycleCnt: [1,2] # GetLoraKind 에서 DB일 경우 DatabaseHandler에서 가져가 쓸 갯수
 
 # --- Weight 설정 ---
@@ -116,20 +119,7 @@ shuffleWildcard: # Wildcard를 섞을 여부. shuffleWildcardPrint이 True일 �
 # --- 이미지 저장 설정 ---
 noSaveImage1: true # SaveImage1 노드의 images 입력을 제거할지 여부
 
-# --- 콘솔 출력 설정 ---
-checkpointYmlPrint: false # [dataPath]/[CheckpointType]/Checkpoint/*.Yml 를 가져온 값 출력 여부
-loraYmlPrint: false # [dataPath]/[CheckpointType]/lora/*.Yml 를 가져온 값 출력 여부
-setupWorkflowPrint: false # [dataPath]/[CheckpointType]/setupWorkflow.yml 출력 여부
-setupWildcardPrint: false # [dataPath]/[CheckpointType]/setupWildcard.yml 출력 여부
-LoraChangeWarnPrint: false # LoraChange 과정중 경고 출력 여부
-LoraChangePrint: false # LoraChange 과정중 와일드카드 관련 출력 여부
-WorkflowPrint: false # ComfyUI로 보낼기 직전 workflow_api 출력 여부
-shuffleWildcardPrint: false # shuffle Wildcard 전후 출력 여부
-setTivePrint: false # SetTive 처리 과정 출력 여부
-setWildcardDicPrint: false # 와일드 카드 관련 최종 처리 과정 출력 여부
-setWildcardTivePrint: false # 와일드 카드 관련 최종 처리 과정 출력 여부
-setWildcardPrint: false # 와일드 카드 관련 최종 처리 과정 출력 여부
-CallbackPrint: false # 실시간 파일 변경시 로그 출력
+WorkflowSave: true # ComfyUI로 보낼기 직전 workflow_api 출력 여부
 
 # --- SetSetupWorkflowToWorkflowApi 설정 ---
 # workflow_api에 setupWorkflow.yml의 내용을 넣을때 제외할 노드
@@ -138,6 +128,7 @@ excludeNode:
   - KSampler
   - CLIPTextEncodeP
   - CLIPTextEncodeN
+  # - VAELoader
   - VAEDecode
   - SaveImage1
   - SaveImage2
