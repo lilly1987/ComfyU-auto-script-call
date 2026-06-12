@@ -147,7 +147,11 @@ class ObserverMixin:
             if event.event_type not in {'created', 'deleted'}: return
 
             rel = path.relative_to(config_path)
-            if len(rel.parts) == 2 and rel.parts[0] in self.checkpoint_types:
+            if (
+                len(rel.parts) == 2
+                and rel.parts[0] in self.checkpoint_types
+                and not self._is_unet_checkpoint_type(rel.parts[0])
+            ):
                 if not self._should_process_event(path, event.event_type): return
                 if event.event_type == 'created' and not self._wait_for_stable_file(path): return
                 
@@ -163,8 +167,12 @@ class ObserverMixin:
             if 'Anime' not in self.checkpoint_types:
                 return
             path = Path(event.src_path)
-            config_path = Path(self.get_config('base_dir'), self.get_config('unetPath'))
+            search_path, config_path, _ = self._get_checkpoint_model_paths('Anime')
             if not fnmatch.fnmatch(str(path), str(config_path / '*.safetensors')): return
+            try:
+                path.relative_to(search_path)
+            except ValueError:
+                return
             if event.event_type not in {'created', 'deleted'}: return
             if not self._should_process_event(path, event.event_type): return
             if event.event_type == 'created' and not self._wait_for_stable_file(path): return

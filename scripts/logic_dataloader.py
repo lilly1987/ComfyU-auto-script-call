@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from pathlib import Path
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Tuple
 from itertools import islice
 from utils.dict_utils import get_nested, set_nested, update_dict
 from utils.file_handler import get_file_dict_list
@@ -44,11 +44,22 @@ class DataLoaderMixin:
             set_nested(self.type_dics, char_w, ct, 'CharWildcard')
             set_nested(self.type_dics, lora_w, ct, 'LoraWildcard')
 
+    def _is_unet_checkpoint_type(self, checkpoint_type: str) -> bool:
+        return checkpoint_type == 'Anime'
+
+    def _get_checkpoint_model_paths(self, checkpoint_type: str) -> Tuple[Path, Path, str]:
+        if self._is_unet_checkpoint_type(checkpoint_type):
+            model_base = Path(self.get_config('base_dir'), self.get_config('unetPath'))
+            typed_base = model_base / checkpoint_type
+            search_base = typed_base if typed_base.exists() else model_base
+            return search_base, model_base, 'unetPath'
+
+        model_base = Path(self.get_config('base_dir'), self.get_config('CheckpointPath'))
+        return model_base / checkpoint_type, model_base, 'CheckpointPath'
+
     def _get_safetensors_checkpoint(self, checkpoint_type: str):
-        model_path_key = 'unetPath' if checkpoint_type == 'Anime' else 'CheckpointPath'
-        model_base = Path(self.get_config('base_dir'), self.get_config(model_path_key))
-        base = model_base if checkpoint_type == 'Anime' else model_base / checkpoint_type
-        f_dict, f_list, f_names = get_file_dict_list(base, model_base)
+        search_base, model_base, _ = self._get_checkpoint_model_paths(checkpoint_type)
+        f_dict, f_list, f_names = get_file_dict_list(search_base, model_base)
         set_nested(self.type_dics, f_dict, checkpoint_type, 'CheckpointFileDics')
         set_nested(self.type_dics, f_list, checkpoint_type, 'CheckpointFileLists')
         set_nested(self.type_dics, f_names, checkpoint_type, 'CheckpointFileNames')
