@@ -4,7 +4,7 @@ base_dir: W:\ComfyUI_windows_portable  # 작업 디렉토리
 
 # --- 처리할 타입 리스트 ---
 CheckpointTypes: # Checkpoint 및 Lora 종류. 뒤의 숫자는 사용할 가중치. 키 추가시 재실행 필요. 가중치는 실시간 반영
-  IL: 1
+  # IL: 1
   Anime: 1
   # Pony: 1
 
@@ -33,14 +33,14 @@ queueLoop: 1 # Queue 반복 횟수
 
 # --- Checkpoint 적용 설정 ---
 GetCheckpointKind:
-    DB: 1
-    Weight: 2 # {type}/Checkpoint/*.yml , {type}/WeightChar.yml 순으로 찿아서 참조
-    Random: 1 # 파일 목록중에서 랜덤 선택
-    Cycle: 1
-    Skip: 1
-    Skip_Weight: 2
-    Favorites: 3
-    Favorites_Weight: 3
+    # DB: 1
+    # Weight: 2 # {type}/Checkpoint/*.yml , {type}/WeightChar.yml 순으로 찿아서 참조
+    # Random: 1 # 파일 목록중에서 랜덤 선택
+    # Cycle: 1
+    # Skip: 1
+    # Skip_Weight: 2
+    # Favorites: 3
+    # Favorites_Weight: 3
     fromImg: 1
 
 fromImgPath: 'Y:\photo\_2d\'
@@ -48,6 +48,10 @@ fromImgMaxRetries: 100
 fromImgIf: 
   UltralyticsDetectorProvider:
     model_name: 'bbox/face_yolov9c.pt'
+
+fromImgNode:
+  Anime: UNETLoader
+  IL: CheckpointLoaderSimple
     
 
 # UNUSED: DB 선택 가중치는 CheckpointDbWeightMax/Min만 사용하고 이 값은 읽지 않음.
@@ -155,4 +159,4 @@ queue_prompt_wait: true # 큐 대기 여부
 # queue_prompt_wait: false # 큐 대기 여부
 # queue_prompt: false # ComfyUI에 프롬프트 전송 여부
 
-# WorkflowSave: true # ComfyUI로 보낼기 직전 workflow_api 출력 여부
+WorkflowSave: true # ComfyUI로 보낼기 직전 workflow_api 출력 여부

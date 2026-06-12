@@ -357,7 +357,12 @@ class SelectorMixin:
             inputs = node.get('inputs', {})
             if 'ckpt_name' in inputs and not ct:
                 p = Path(inputs['ckpt_name'].replace('\\', '/'))
-                if len(p.parts) >= 2: ct, cn = p.parts[0], p.stem
+                if len(p.parts) >= 2:
+                    ct, cn = p.parts[0], p.stem
+            if 'unet_name' in inputs and not ct:
+                p = Path(inputs['unet_name'].replace('\\', '/'))
+                if len(p.parts) >= 2:
+                    ct, cn = p.parts[0], p.stem
             if 'lora_name' in inputs and not chn:
                 ln = inputs['lora_name'].lower()
                 if 'char' in ln:
@@ -372,6 +377,7 @@ class SelectorMixin:
             'UltralyticsDetectorProvider': {'endpoint': '/models/ultralytics', 'key': 'model_name'},
             'SAMLoader': {'endpoint': '/models/sams', 'key': 'model_name'},
             # 'CheckpointLoaderSimple': {'endpoint': '/models/checkpoints', 'key': 'ckpt_name'},
+            # 'UNETLoader': {'endpoint': '/models/checkpoints', 'key': 'unet_name'},
             # 'LoraLoader': {'endpoint': '/models/loras', 'key': 'lora_name'},
             'ControlNetLoader': {'endpoint': '/models/controlnet', 'key': 'control_net_name'},
             'VAELoader': {'endpoint': '/models/vae', 'key': 'vae_name'},

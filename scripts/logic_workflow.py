@@ -59,8 +59,21 @@ class WorkflowMixin:
         return add_exists(self.workflow_api, value, node, "inputs", key) is not None
 
     def set_checkpoint_loader_simple(self):
-        if not (self.checkpoint_type == 'Anime' and self.set_exists_workflow('UNETLoader', 'unet_name', self.checkpoint_path)):
-            self.set_exists_workflow('CheckpointLoaderSimple', 'ckpt_name', self.checkpoint_path)
+        if self.fromImg:
+            if 'UNETLoader' in self.workflow_api:
+                if self.get_workflow('UNETLoader', 'unet_name') is None:
+                    self.set_exists_workflow('UNETLoader', 'unet_name', self.checkpoint_path)
+            elif 'CheckpointLoaderSimple' in self.workflow_api:
+                if self.get_workflow('CheckpointLoaderSimple', 'ckpt_name') is None:
+                    self.set_exists_workflow('CheckpointLoaderSimple', 'ckpt_name', self.checkpoint_path)
+            # fromImg prompt 경로가 이미 존재하면 덮어쓰지 않습니다.
+            self.set_exists_workflow('PrimitiveStringMultilineInfo', 'value', str(self.checkpoint_kind) + " \n")
+            self.add_exists_workflow('PrimitiveStringMultilineInfo', 'value', str(self.checkpoint_path) + " \n")
+            return
+
+        if self.checkpoint_type == 'Anime' and self.set_exists_workflow('UNETLoader', 'unet_name', self.checkpoint_path):
+            return
+        self.set_exists_workflow('CheckpointLoaderSimple', 'ckpt_name', self.checkpoint_path)
         # 정보성 텍스트 초기화 및 체크포인트 경로 기록
         self.set_exists_workflow('PrimitiveStringMultilineInfo', 'value', str(self.checkpoint_kind) + " \n")
         self.add_exists_workflow('PrimitiveStringMultilineInfo', 'value', str(self.checkpoint_path) + " \n")
