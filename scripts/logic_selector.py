@@ -255,13 +255,34 @@ class SelectorMixin:
             self.loras_set.update(selected)
 
     def _handle_from_img_mode(self) -> bool:
-        max_retries = self.get_config('fromImgMaxRetries', 50)
+        max_retries = self.get_config('fromImgMaxRetries', 5)
+        expected_node = self._get_from_img_node(self.checkpoint_type)
         for _ in range(max_retries):
             img_path = self._select_from_img()
             if not img_path: continue
             prompt = self._extract_prompt_from_png(img_path)
-            if not prompt or 'CheckpointLoaderSimple' not in prompt: continue
-            
+            if not prompt:
+                continue
+
+            if expected_node and expected_node not in prompt:
+                continue
+
+            if not expected_node and 'CheckpointLoaderSimple' not in prompt and 'UNETLoader' not in prompt:
+                continue
+
+            selected_node = expected_node or ('UNETLoader' if 'UNETLoader' in prompt else 'CheckpointLoaderSimple')
+            node = prompt.get(selected_node)
+            if not isinstance(node, dict):
+                continue
+
+            inputs = node.get('inputs', {})
+            input_key = 'unet_name' if selected_node == 'UNETLoader' else 'ckpt_name'
+            model_value = inputs.get(input_key, '')
+            resolved_model = self._resolve_from_img_model_path(input_key, model_value)
+            if not resolved_model:
+                continue
+
+            inputs[input_key] = resolved_model
             lora_list = self._get_loras_model_list()
             all_valid = True
             for node in prompt.values():
@@ -270,15 +291,22 @@ class SelectorMixin:
                     lname = inputs.get('lora_name')
                     if lname and not self._validate_lora_file(lname):
                         matches = [m for m in lora_list if self._model_basename(m) == self._model_basename(lname)]
-                        if matches: inputs['lora_name'] = matches[0]
-                        else: all_valid = False; break
-            
+                        if matches:
+                            inputs['lora_name'] = matches[0]
+                        else:
+                            all_valid = False
+                            break
+
             if all_valid:
                 self.workflow_api = prompt
                 self.from_img_path = img_path
+                self.checkpoint_path = resolved_model
+                self.checkpoint_name = Path(resolved_model).stem
                 _, _, char_name = self._extract_checkpoint_and_char_from_workflow(prompt)
-                if char_name: self.char_name, self.no_char = char_name, False
-                else: self.char_name, self.no_char = 'fromImg', True
+                if char_name:
+                    self.char_name, self.no_char = char_name, False
+                else:
+                    self.char_name, self.no_char = 'fromImg', True
                 return True
         return False
 
@@ -301,6 +329,40 @@ class SelectorMixin:
     def _validate_lora_file(self, lora_name: str) -> bool:
         p = Path(self.get_config('base_dir'), self.get_config('LoraPath'), lora_name)
         return p.exists()
+
+    def _get_from_img_node(self, checkpoint_type: Optional[str]) -> Optional[str]:
+        from_img_node = self.get_config('fromImgNode', {})
+        if not isinstance(from_img_node, dict) or checkpoint_type is None:
+            return None
+        return from_img_node.get(checkpoint_type)
+
+    def _get_from_img_model_base(self, checkpoint_type: str) -> Optional[Path]:
+        unet_path = self.get_config('unetPath')
+        if not unet_path:
+            return None
+        base = Path(self.get_config('base_dir'), unet_path)
+        model_dir = base / checkpoint_type
+        return model_dir if model_dir.exists() else base if base.exists() else None
+
+    def _resolve_from_img_model_path(self, input_key: str, current_val: str) -> Optional[str]:
+        if not current_val:
+            return None
+        expected_base = self._get_from_img_model_base(self.checkpoint_type)
+        if expected_base is None:
+            return current_val
+
+        current_name = self._model_basename(current_val)
+        if not current_name:
+            return None
+
+        if str(current_val).replace('\\', '/').startswith(str(expected_base).replace('\\', '/')):
+            return str(Path(current_val).as_posix())
+
+        for candidate in expected_base.rglob('*'):
+            if candidate.is_file() and candidate.stem == current_name:
+                return candidate.as_posix()
+
+        return None
 
     def _get_loras_model_list(self) -> List[str]:
         return self._get_model_list('/models/loras')
@@ -376,9 +438,9 @@ class SelectorMixin:
         node_configs = {
             'UltralyticsDetectorProvider': {'endpoint': '/models/ultralytics', 'key': 'model_name'},
             'SAMLoader': {'endpoint': '/models/sams', 'key': 'model_name'},
-            # 'CheckpointLoaderSimple': {'endpoint': '/models/checkpoints', 'key': 'ckpt_name'},
-            # 'UNETLoader': {'endpoint': '/models/checkpoints', 'key': 'unet_name'},
-            # 'LoraLoader': {'endpoint': '/models/loras', 'key': 'lora_name'},
+            'CheckpointLoaderSimple': {'endpoint': '/models/checkpoints', 'key': 'ckpt_name'},
+            'UNETLoader': {'endpoint': '/models/checkpoints', 'key': 'unet_name'},
+            'LoraLoader': {'endpoint': '/models/loras', 'key': 'lora_name'},
             'ControlNetLoader': {'endpoint': '/models/controlnet', 'key': 'control_net_name'},
             'VAELoader': {'endpoint': '/models/vae', 'key': 'vae_name'},
         }

@@ -60,13 +60,13 @@ class WorkflowMixin:
 
     def set_checkpoint_loader_simple(self):
         if self.fromImg:
-            if 'UNETLoader' in self.workflow_api:
-                if self.get_workflow('UNETLoader', 'unet_name') is None:
-                    self.set_exists_workflow('UNETLoader', 'unet_name', self.checkpoint_path)
-            elif 'CheckpointLoaderSimple' in self.workflow_api:
-                if self.get_workflow('CheckpointLoaderSimple', 'ckpt_name') is None:
-                    self.set_exists_workflow('CheckpointLoaderSimple', 'ckpt_name', self.checkpoint_path)
-            # fromImg prompt 경로가 이미 존재하면 덮어쓰지 않습니다.
+            expected_node = self._get_from_img_node(self.checkpoint_type)
+            fallback_node = 'UNETLoader' if 'UNETLoader' in self.workflow_api else 'CheckpointLoaderSimple' if 'CheckpointLoaderSimple' in self.workflow_api else None
+            selected_node = expected_node if expected_node in self.workflow_api else fallback_node
+            if selected_node:
+                input_key = 'unet_name' if selected_node == 'UNETLoader' else 'ckpt_name'
+                if self.get_workflow(selected_node, input_key) is None:
+                    self.set_exists_workflow(selected_node, input_key, self.checkpoint_path)
             self.set_exists_workflow('PrimitiveStringMultilineInfo', 'value', str(self.checkpoint_kind) + " \n")
             self.add_exists_workflow('PrimitiveStringMultilineInfo', 'value', str(self.checkpoint_path) + " \n")
             return
