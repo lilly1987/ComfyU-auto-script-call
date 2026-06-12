@@ -391,11 +391,30 @@ class SelectorMixin:
                 models.extend(self._flatten_model_list(item))
         return models
 
-    def _normalize_model_path(self, value: str) -> str:
-        return str(value).replace('\\', '/').strip()
+    def _normalize_model_path(self, value: str, force_linux: bool = False) -> str:
+        """경로를 정규화합니다.
+        
+        Args:
+            value: 경로 문자열
+            force_linux: True일 경우 Linux 형식(/)으로 강제 변환
+        
+        Returns:
+            정규화된 경로
+        """
+        value = str(value).strip()
+        if force_linux:
+            return value.replace('\\', '/').replace('\\\\', '/')
+        return value
+
+    def _get_model_basename(self, value: str) -> str:
+        """경로 형식을 유지하면서 베이스명을 추출합니다."""
+        value = str(value).strip()
+        sep = '\\' if '\\' in value else '/'
+        return value.rsplit(sep, 1)[-1]
 
     def _model_basename(self, value: str) -> str:
-        return self._normalize_model_path(value).rsplit('/', 1)[-1]
+        """정규화된 경로에서 베이스명을 추출합니다 (Linux 형식 기준)."""
+        return self._normalize_model_path(value, force_linux=True).rsplit('/', 1)[-1]
 
     def _get_from_img_fallback_model(self, class_type: str, input_key: str) -> Optional[str]:
         from_img_if = self.get_config('fromImgIf', {})
@@ -426,27 +445,37 @@ class SelectorMixin:
                 if len(p.parts) >= 2:
                     ct, cn = p.parts[0], p.stem
             if 'lora_name' in inputs and not chn:
-                ln = inputs['lora_name'].lower()
-                if 'char' in ln:
+                ln = inputs['lora_name']
+                if 'char' in ln.lower():
                     p = Path(ln.replace('\\', '/'))
-                    idx = p.parts.index('char')
-                    if idx + 1 < len(p.parts): chn = Path(p.parts[idx+1]).stem
+                    parts = p.parts
+                    try:
+                        idx = [i.lower() for i in parts].index('char')
+                        if idx + 1 < len(parts): chn = Path(parts[idx+1]).stem
+                    except ValueError:
+                        pass
         return ct, cn, chn
 
     def _sync_model_names(self, workflow: Dict):
-        """워크플로우 내의 특정 노드 모델 경로를 실제 API 목록과 동기화합니다 (슬래시 보정 및 경로 매칭)."""
+        """워크플로우 내의 특정 노드 모델 경로를 실제 API 목록과 동기화합니다.
+        
+        - 서버에서 받은 경로 형식(\\또는 /)을 기본적으로 유지
+        - forceLinuxPathNodes에 지정된 노드는 Linux 형식(/)으로 강제 변환
+        """
         node_configs = {
             'UltralyticsDetectorProvider': {'endpoint': '/models/ultralytics', 'key': 'model_name'},
             'SAMLoader': {'endpoint': '/models/sams', 'key': 'model_name'},
             'CheckpointLoaderSimple': {'endpoint': '/models/checkpoints', 'key': 'ckpt_name'},
             'UNETLoader': {'endpoint': '/models/checkpoints', 'key': 'unet_name'},
             'LoraLoader': {'endpoint': '/models/loras', 'key': 'lora_name'},
+            'LoraLoaderBlockWeight': {'endpoint': '/models/loras', 'key': 'lora_name'},
             'ControlNetLoader': {'endpoint': '/models/controlnet', 'key': 'control_net_name'},
             'VAELoader': {'endpoint': '/models/vae', 'key': 'vae_name'},
         }
         model_cache = {}
+        force_linux_nodes = set(self.get_config('forceLinuxPathNodes', []))
         
-        for node in workflow.values():
+        for node_id, node in workflow.items():
             if not isinstance(node, dict): continue
             class_type = str(node.get('class_type', ''))
             
@@ -460,6 +489,7 @@ class SelectorMixin:
             if cfg:
                 endpoint = cfg['endpoint']
                 input_key = cfg['key']
+                force_linux_for_this_node = class_type in force_linux_nodes
                 
                 if endpoint not in model_cache:
                     model_cache[endpoint] = self._get_model_list(endpoint)
@@ -469,29 +499,32 @@ class SelectorMixin:
                 current_val = inputs.get(input_key, '')
                 if not current_val or not isinstance(current_val, str): continue
                 
-                normalized_models = [self._normalize_model_path(m) for m in m_list]
-                current_norm = self._normalize_model_path(current_val)
-                name = self._model_basename(current_val)
-                matches = [m for m in normalized_models if self._model_basename(m) == name]
+                current_basename = self._get_model_basename(current_val)
+                matches = [m for m in m_list if self._get_model_basename(m) == current_basename]
+                
                 if matches:
-                    fixed_path = matches[0]
-                    if current_norm != fixed_path:
-                        inputs[input_key] = fixed_path
-                        # print.Info(f"[{class_type}] Path synchronized: {current_val} -> {fixed_path}")
-                    elif current_val != current_norm:
-                        inputs[input_key] = current_norm
+                    matched_model = matches[0]
+                    final_path = self._normalize_model_path(matched_model, force_linux=force_linux_for_this_node)
+                    if current_val != final_path:
+                        inputs[input_key] = final_path
+                        logger.debug(f"[{class_type}] Path synchronized: {current_val} -> {final_path}")
                     continue
 
-                if current_norm not in normalized_models:
-                    fallback = self._get_from_img_fallback_model(class_type, input_key)
-                    if fallback:
-                        fallback_norm = self._normalize_model_path(fallback)
-                        fallback_name = self._model_basename(fallback_norm)
-                        fallback_matches = [m for m in normalized_models if self._model_basename(m) == fallback_name]
-                        inputs[input_key] = fallback_matches[0] if fallback_matches else fallback_norm
+                fallback = self._get_from_img_fallback_model(class_type, input_key)
+                if fallback:
+                    fallback_basename = self._get_model_basename(fallback)
+                    fallback_matches = [m for m in m_list if self._get_model_basename(m) == fallback_basename]
+                    if fallback_matches:
+                        final_path = self._normalize_model_path(fallback_matches[0], force_linux=force_linux_for_this_node)
+                        inputs[input_key] = final_path
                         logger.warning(
                             f"[{class_type}] Model not found: {current_val}. "
-                            f"Fallback applied: {inputs[input_key]}"
+                            f"Fallback applied: {final_path}"
                         )
-                elif current_val != current_norm:
-                    inputs[input_key] = current_norm
+                    else:
+                        final_path = self._normalize_model_path(fallback, force_linux=force_linux_for_this_node)
+                        inputs[input_key] = final_path
+                        logger.warning(
+                            f"[{class_type}] Model not found: {current_val}. "
+                            f"Custom fallback applied: {final_path}"
+                        )

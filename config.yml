@@ -33,14 +33,14 @@ queueLoop: 1 # Queue 반복 횟수
 
 # --- Checkpoint 적용 설정 ---
 GetCheckpointKind:
-    # DB: 1
-    # Weight: 2 # {type}/Checkpoint/*.yml , {type}/WeightChar.yml 순으로 찿아서 참조
-    # Random: 1 # 파일 목록중에서 랜덤 선택
-    # Cycle: 1
-    # Skip: 1
-    # Skip_Weight: 2
-    # Favorites: 3
-    # Favorites_Weight: 3
+    DB: 1
+    Weight: 2 # {type}/Checkpoint/*.yml , {type}/WeightChar.yml 순으로 찿아서 참조
+    Random: 1 # 파일 목록중에서 랜덤 선택
+    Cycle: 1
+    Skip: 1
+    Skip_Weight: 2
+    Favorites: 3
+    Favorites_Weight: 3
     fromImg: 1
 
 fromImgPath: 'Y:\photo\_2d\'
@@ -52,7 +52,10 @@ fromImgIf:
 fromImgNode:
   Anime: UNETLoader
   IL: CheckpointLoaderSimple
-    
+
+# 특정 노드는 항상 Linux 경로 형식(/)을 사용해야 하는 경우 여기에 지정
+# 예: ['LoraLoaderBlockWeight', 'CLIPSetLastLayer']
+forceLinuxPathNodes: []
 
 # UNUSED: DB 선택 가중치는 CheckpointDbWeightMax/Min만 사용하고 이 값은 읽지 않음.
 CheckpointDbWeight: 3 # GetCharKind 에서 DB일 경우 최대 가중치

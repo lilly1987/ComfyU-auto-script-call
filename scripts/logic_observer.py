@@ -5,7 +5,7 @@ from pathlib import Path
 from watchdog.events import FileSystemEvent
 from utils.file_handler import FileEventHandler, FileObserver
 from utils.dict_utils import get_nested, set_nested
-from utils.print_log import print
+from utils.print_log import print, logger
 
 class ObserverMixin:
     """파일 시스템 감시 및 콜백 로직을 담당하는 Mixin"""

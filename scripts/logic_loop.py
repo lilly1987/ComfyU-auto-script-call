@@ -113,7 +113,7 @@ class LoopMixin:
         
         print(f"{self.total} {self.checkpoint_loop_cnt}/{self.checkpoint_loop} "
               f"{self.char_loop_cnt}/{self.char_loop} {self.queue_loop_cnt}/{self.queue_loop} "
-              f"{elapsed} {self.checkpoint_name} {self.char_name}")
+              f"{elapsed} {self.checkpoint_type} {self.checkpoint_name} {self.char_name}")
         
         # DB 기록 업데이트
         if not self.fromImg:
