@@ -126,12 +126,12 @@ class LoopMixin:
         success, status_code = self._queue()
         
         # fromImg 모드 에러 핸들링
-        if not success and self.fromImg and status_code == 400:
-            failed_img = self.from_img_path
-            self.from_img_path = self._select_from_img(exclude={failed_img})
-            if not self.from_img_path:
-                self.checkpoint_kind = 'Weight'
-            return
+        # if not success and self.fromImg and status_code == 400:
+        #     failed_img = self.from_img_path
+        #     self.from_img_path = self._select_from_img(exclude={failed_img})
+        #     if not self.from_img_path:
+        #         self.checkpoint_kind = 'Weight'
+        #     return
         
         time.sleep(random_min_max(self.get_config("sleep", 1)))
         

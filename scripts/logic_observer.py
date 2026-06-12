@@ -210,3 +210,5 @@ class ObserverMixin:
         if Path(event.src_path).name == 'config.yml':
             self.config_loader.reload()
             self.config = self.config_loader.config
+            self.checkpoint_types = list(self.config.get('CheckpointTypes', {}).keys())
+            logger.info(f"CheckpointTypes reloaded: {self.checkpoint_types}")

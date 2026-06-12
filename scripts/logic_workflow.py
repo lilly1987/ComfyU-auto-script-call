@@ -15,10 +15,11 @@ class WorkflowMixin:
 
     def copy_workflow_api(self):
 
-        if self.fromImg: 
-            
+        if self.fromImg:
             return
+        current_type = self.checkpoint_type
         self.workflow_api = copy.deepcopy(self.get_now('workflow_api', default={}))
+        logger.debug(f"copy_workflow_api: checkpoint_type={current_type}, workflow_api_nodes={list(self.workflow_api.keys())}")
 
     def set_tive(self, num_name: str, dic: Dict, reset: bool = False):
         if reset:
