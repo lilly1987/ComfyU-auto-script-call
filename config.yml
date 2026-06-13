@@ -1,11 +1,11 @@
 # --- 경로 설정 ---
-dataPath: W:\ComfyU-auto-script_data  # 설정파일 폴더. 변경시 재실행 필요.
+dataPath: Y:\ComfyU-auto-script_data  # 설정파일 폴더. 변경시 재실행 필요.
 base_dir: W:\ComfyUI_windows_portable  # 작업 디렉토리
 
 # --- 처리할 타입 리스트 ---
 CheckpointTypes: # Checkpoint 및 Lora 종류. 뒤의 숫자는 사용할 가중치. 키 추가시 재실행 필요. 가중치는 실시간 반영
   IL: 1
-  Anime: 1
+  Anime: 2
   # Pony: 1
 
 # --- 경로 설정 ---
@@ -55,7 +55,7 @@ fromImgNode:
 
 # 특정 노드는 항상 Linux 경로 형식(/)을 사용해야 하는 경우 여기에 지정
 # 예: ['LoraLoaderBlockWeight', 'CLIPSetLastLayer']
-forceLinuxPathNodes: []
+forceLinuxPathNodes: ['UltralyticsDetectorProvider']
 
 # UNUSED: DB 선택 가중치는 CheckpointDbWeightMax/Min만 사용하고 이 값은 읽지 않음.
 CheckpointDbWeight: 3 # GetCharKind 에서 DB일 경우 최대 가중치
