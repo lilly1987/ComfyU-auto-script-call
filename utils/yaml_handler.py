@@ -7,7 +7,7 @@ from typing import Dict, Any, Optional, List
 from pathlib import Path
 import yaml
 from ruamel.yaml import YAML
-
+from utils.print_log import print
 
 class YAMLHandler:
     """YAML 파일을 읽고 쓰는 클래스 (주석 보존)"""
@@ -99,12 +99,17 @@ class YAMLHandler:
         """
         result = {}
         if not path.exists():
+            print.Warning(f"YML 파일이 존재하지 않습니다: {path}")
             return result
         
         for yml_file in path.glob(pattern):
+            # print.Value('  병합 중', yml_file)
             data = YAMLHandler.load_simple(str(yml_file))
             if data:
+                print.Value('  병합 완료', len(data) , '항목',yml_file)
                 result.update(data)
+            else:
+                print.Warning(f"  오류: YML 파일 읽기 실패: {yml_file}")
         
         return result
 

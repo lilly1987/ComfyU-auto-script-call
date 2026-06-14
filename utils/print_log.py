@@ -81,6 +81,7 @@ class PrintHelper:
         self.Debug = self.Blue
         self.Info = self.Green
         self.Warn = self.Yellow
+        self.Warning = self.Yellow
         self.Err = self.Red
         
         self.Value = self.Cyan

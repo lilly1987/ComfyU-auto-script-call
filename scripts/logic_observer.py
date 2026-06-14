@@ -111,8 +111,9 @@ class ObserverMixin:
         """설정 데이터 변경 시 실시간 리로드"""
         try:
             path = Path(event.src_path)
-            config_path = self.get_config('dataPath')
-            if not fnmatch.fnmatch(str(path), str(Path(config_path) / '*')): return
+            config_path = Path(self.get_config('dataPath'))
+            if not path.is_relative_to(config_path):
+                return
             
             rel = path.relative_to(config_path)
             if len(rel.parts) > 0:
@@ -128,15 +129,25 @@ class ObserverMixin:
                             'WeightLora.yml': self._get_weight_lora,
                             'workflow_api.json': self._get_workflow_api
                         }
-                        if r1 in mapping: mapping[r1](r0); return
-                        if len(rel.parts) == 3:
-                            if rel.parts[1] == 'checkpoint': self._get_dic_checkpoint_yml(r0)
-                            elif rel.parts[1] == 'lora': self._get_dic_lora_yml(r0); self._get_weight_char(r0)
+                        if r1 in mapping:
+                            mapping[r1](r0)
                             return
-                if r0 == 'setupWildcard.yml': self._get_setup_wildcard()
-                elif r0 == 'setupWorkflow.yml': self._get_setup_workflow()
-                elif r0 == 'config.yml': self.config_loader.reload(); self.config = self.config_loader.config
-        except Exception as e: print(f"Data path observer error: {e}")
+                        if len(rel.parts) == 3:
+                            if rel.parts[1] == 'checkpoint':
+                                self._get_dic_checkpoint_yml(r0)
+                            elif rel.parts[1] == 'lora':
+                                self._get_dic_lora_yml(r0)
+                                self._get_weight_char(r0)
+                            return
+                if r0 == 'setupWildcard.yml':
+                    self._get_setup_wildcard()
+                elif r0 == 'setupWorkflow.yml':
+                    self._get_setup_workflow()
+                elif r0 == 'config.yml':
+                    self.config_loader.reload()
+                    self.config = self.config_loader.config
+        except Exception as e:
+            print(f"Data path observer error: {e}")
 
     def _checkpoint_path_callback(self, event: FileSystemEvent):
         """모델 파일 추가/삭제 감지"""

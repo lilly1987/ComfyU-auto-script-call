@@ -21,13 +21,13 @@ class WorkflowMixin:
         self.workflow_api = copy.deepcopy(self.get_now('workflow_api', default={}))
         logger.debug(f"copy_workflow_api: checkpoint_type={current_type}, workflow_api_nodes={list(self.workflow_api.keys())}")
 
-    def set_tive(self, num_name: str, dic: Dict, reset: bool = False):
+    def set_tive(self, num_name: str, dic: Dict, reset: bool = False,msg=None):
         if reset:
             self.positive_dics.pop(num_name, None); self.negative_dics.pop(num_name, None)
         if dic:
             for key in ['positive', 'negative']:
                 target = self.positive_dics if key == 'positive' else self.negative_dics
-                update_dict(target.setdefault(num_name, {}), dic.get(key))
+                update_dict(target.setdefault(num_name, {}), dic.get(key),msg=msg)
 
     def apply_workflow_settings(self, node: str, keys: List[str], value_func=None, random_func=random_min_max):
         """워크플로우 노드에 설정값과 랜덤 가중치를 일괄 적용합니다."""
@@ -71,14 +71,15 @@ class WorkflowMixin:
             self.add_exists_workflow('PrimitiveStringMultilineInfo', 'value', str(self.checkpoint_path) + " \n")
             return
 
+        if not self.fromImg:
+            self.yml_checkpoint = self.get_now('dicCheckpointYml', self.checkpoint_name, default={})
+            # print.Value('Loaded Checkpoint YML', self.checkpoint_name, self.yml_checkpoint)
         if self.checkpoint_type == 'Anime' and self.set_exists_workflow('UNETLoader', 'unet_name', self.checkpoint_path):
             return
         self.set_exists_workflow('CheckpointLoaderSimple', 'ckpt_name', self.checkpoint_path)
         # 정보성 텍스트 초기화 및 체크포인트 경로 기록
         self.set_exists_workflow('PrimitiveStringMultilineInfo', 'value', str(self.checkpoint_kind) + " \n")
         self.add_exists_workflow('PrimitiveStringMultilineInfo', 'value', str(self.checkpoint_path) + " \n")
-        if not self.fromImg:
-            self.yml_checkpoint = self.get_now('dicCheckpointYml', self.checkpoint_name, default={})
 
     def set_ksampler(self):
         # self.set_exists_workflow('KSampler', 'seed', seed_int())
@@ -190,7 +191,7 @@ class WorkflowMixin:
             setup_w = self.get_now('setupWildcard', default={})
             if setup_w: self.set_tive('setup', setup_w)
 
-        if self.yml_checkpoint: self.set_tive('Checkpoint', self.yml_checkpoint)
+        if self.yml_checkpoint: self.set_tive('Checkpoint', self.yml_checkpoint,msg=f"체크포인트 YML: {self.checkpoint_name}")
         
         char_dic = self.get_now('CharWildcard') if self.no_char else self.get_now('dicLoraYml', self.char_name, default={})
         if char_dic: self.set_tive('Char', char_dic)

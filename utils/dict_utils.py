@@ -4,7 +4,7 @@
 """
 import collections
 from typing import Dict, Any, Optional
-
+from utils.print_log import print
 
 def get_nested(d: Dict, *keys, default: Any = None) -> Any:
     """
@@ -196,18 +196,20 @@ def pop_nested(d: Dict, *keys, default: Any = None) -> Any:
     return default
 
 
-def update_dict(d: Dict, u: Dict) -> Dict:
+def update_dict(d: Dict, u: Dict,msg=None) -> Dict:
     """
     딕셔너리를 재귀적으로 업데이트합니다.
     
     Args:
         d: 대상 딕셔너리
         u: 업데이트할 딕셔너리
+        msg: 경고 메시지
     
     Returns:
         업데이트된 딕셔너리
     """
     if u is None:
+        if msg: print.Warn("업데이트할 딕셔너리가 None입니다.",msg)        
         return d
     
     if not isinstance(u, dict):

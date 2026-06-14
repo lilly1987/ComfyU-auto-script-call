@@ -110,6 +110,7 @@ class DataLoaderMixin:
             if not isinstance(v1, dict): continue
             dic = v1.get('dic', {})
             for k2, v2 in list(dic.items()):
+                
                 if not v2.get('weight') and not v2.get('per'): dic.pop(k2); continue
                 loras = v2.get('loras')
                 if isinstance(loras, dict): v2["loras"] = {k: v for k, v in loras.items() if k in names}
@@ -120,6 +121,7 @@ class DataLoaderMixin:
 
     def _get_dic_checkpoint_yml(self, checkpoint_type: str):
         p = Path(self.get_config('dataPath')) / checkpoint_type / 'checkpoint'
+        print.Value('Loading YML', checkpoint_type, p)
         set_nested(self.type_dics, self.yaml_handler.merge_yml_files(p, '*.yml'), checkpoint_type, 'dicCheckpointYml')
 
     def _get_dic_lora_yml(self, checkpoint_type: str):
