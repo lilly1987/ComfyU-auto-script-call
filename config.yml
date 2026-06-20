@@ -4,8 +4,8 @@ base_dir: W:\ComfyUI_windows_portable2  # 작업 디렉토리
 
 # --- 처리할 타입 리스트 ---
 CheckpointTypes: # Checkpoint 및 Lora 종류. 뒤의 숫자는 사용할 가중치. 키 추가시 재실행 필요. 가중치는 실시간 반영
-  IL: 1
-  Anime: 2
+  IL: 2
+  Anime: 1
   # Pony: 1
 
 # --- 경로 설정 ---
@@ -27,7 +27,7 @@ url2: http://127.0.0.1:8188/ # ComfyUI 로 보낼 url. ComfyUI가 실행중이�
 # CheckpointLoop: [5, 5] # Checkpoint 반복 횟수. 한번 돌때마다 Char 값이 바뀜
 CheckpointLoop: 5 # Checkpoint 반복 횟수. 한번 돌때마다 Char 값이 바뀜
 # CharLoop: [3, 3] # Char 반복 횟수. 한번 돌때마다 Lora 값이 바뀜
-CharLoop: 5 # Char 반복 횟수. 한번 돌때마다 Lora 값이 바뀜
+CharLoop: 4 # Char 반복 횟수. 한번 돌때마다 Lora 값이 바뀜
 # queueLoop: [3, 3] # Queue 반복 횟수
 queueLoop: 1 # Queue 반복 횟수
 
