@@ -27,6 +27,7 @@ def queue_prompt(prompt: Dict[str, Any], url: str = "http://127.0.0.1:8188/promp
         p = {"prompt": prompt}
         p = convert_paths(p)
         data = json.dumps(p).encode("utf-8")
+        # print("Prompt queued before request.Request")
         req = request.Request(url, data=data)
     except TypeError:
         print.exception(show_locals=True)
@@ -38,8 +39,9 @@ def queue_prompt(prompt: Dict[str, Any], url: str = "http://127.0.0.1:8188/promp
 
     while True:
         try:
+            # print("Prompt queued before request.urlopen")
             request.urlopen(req)
-            print("Prompt queued")
+            # print("Prompt queued")
             return True, None
         except HTTPError as e:
             print.Err("Prompt content:", prompt)

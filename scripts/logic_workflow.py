@@ -131,9 +131,17 @@ class WorkflowMixin:
         
         next_key = 'LoraLoader' # 다른 노드들이 다 참조함.
         dic_cp = self.get_now('dicCheckpointYml', self.checkpoint_name, default={})
-        h_model_conn = ['ModelSamplingDiscrete', 0] if isinstance(dic_cp.get('ModelSamplingDiscrete'), dict) else self.get_workflow(next_key, 'model')
-        h_clip_conn = ['CLIPSetLastLayer', 0] if isinstance(dic_cp.get('CLIPSetLastLayer'), dict) else self.get_workflow(next_key, 'clip')
-
+        # print.Info(f"dic_cp", dic_cp)
+        if self.checkpoint_type == 'Anime':
+            h_model_conn = self.get_workflow(next_key, 'model')
+            h_clip_conn = self.get_workflow(next_key, 'clip')
+        else:
+            h_model_conn = ['ModelSamplingDiscrete', 0] if isinstance(dic_cp.get('ModelSamplingDiscrete'), dict) else self.get_workflow('ModelSamplingDiscrete', 'model')
+            # print.Info(f"h_model_conn", isinstance(dic_cp.get('ModelSamplingDiscrete'), dict))
+            # print.Info(f"h_model_conn", self.get_workflow(next_key, 'model'))
+            print.Info(f"h_model_conn", h_model_conn)
+            h_clip_conn = ['CLIPSetLastLayer', 0] if isinstance(dic_cp.get('CLIPSetLastLayer'), dict) else self.get_workflow('CLIPSetLastLayer', 'clip')
+            print.Info(f"h_clip_conn", h_clip_conn)
         
         self.IsStyleLora, self.IsDressLora = False, False
 
@@ -260,14 +268,19 @@ class WorkflowMixin:
             self.prefix_name = f"{self.checkpoint_name}-{self.char_name}-{ts}-{self.total}"
         else:
             tcp = '=' if self.yml_checkpoint.get('skip') not in (False, None) else '+'
+            pfv = '#' if self.yml_checkpoint.get('favorites') not in (False, None) else tcp
+            
             tch = '=' if not self.no_char and self.get_now('dicLoraYml', self.char_name, default={}).get('skip') not in (False, None) else '+'
             tfv = '#' if not self.no_char and self.get_now('dicLoraYml', self.char_name, default={}).get('favorites') not in (False, None) else tch
+            
             cpw = self.yml_checkpoint.get('weight', '')
+
             chw = self.get_now('dicLoraYml', self.char_name, default={}).get('weight', '') if not self.no_char else ''
+
             st = ("S" if getattr(self, 'IsStyleLora', False) else "") + ("D" if getattr(self, 'IsDressLora', False) else "")
-            self.prefix = (f"{self.checkpoint_type}/{self.checkpoint_name}{tcp}{cpw}/{self.char_name}{tfv}{chw}/"
-                      f"{self.checkpoint_name}{tcp}-{self.char_name}{tch}-{st}-{len(self.loras_set)}-{ts}-{self.total}")
-            self.prefix_name = f"{self.checkpoint_name}{tcp}-{self.char_name}{tch}-{st}-{len(self.loras_set)}-{ts}-{self.total}"
+            self.prefix = (f"{self.checkpoint_type}/{self.checkpoint_name}{pfv}{cpw}/{self.char_name}{tfv}{chw}/"
+                      f"{self.checkpoint_name}{pfv}-{self.char_name}{tfv}-{st}-{len(self.loras_set)}-{ts}-{self.total}")
+            self.prefix_name = f"{self.checkpoint_name}{pfv}-{self.char_name}{tfv}-{st}-{len(self.loras_set)}-{ts}-{self.total}"
 
         for i in ['1', '2']: self.set_exists_workflow(f'SaveImage{i}', 'filename_prefix', f"{self.prefix}-{i}")
         self.set_exists_workflow('SaveVideo', 'filename_prefix', self.prefix)

@@ -115,6 +115,10 @@ class LoopMixin:
               f"{self.char_loop_cnt}/{self.char_loop} {self.queue_loop_cnt}/{self.queue_loop} "
               f"{elapsed} {self.checkpoint_type} {self.checkpoint_name} {self.char_name}")
         
+        # print("before _queue()")
+        # 5. ComfyUI 전송
+        success, status_code = self._queue()
+
         # DB 기록 업데이트
         if not self.fromImg:
             self.db.update(
@@ -122,8 +126,6 @@ class LoopMixin:
                 tags=self._collect_lora_tags()
             )
         
-        # 5. ComfyUI 전송
-        success, status_code = self._queue()
         
         # fromImg 모드 에러 핸들링
         # if not success and self.fromImg and status_code == 400:

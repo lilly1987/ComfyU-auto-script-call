@@ -106,10 +106,11 @@ class YAMLHandler:
             # print.Value('  병합 중', yml_file)
             data = YAMLHandler.load_simple(str(yml_file))
             if data:
-                print.Value('  병합 완료', len(data) , '항목',yml_file)
+                # print.Value('  병합 완료', len(data) , '항목',yml_file)
                 result.update(data)
             else:
                 print.Warning(f"  오류: YML 파일 읽기 실패: {yml_file}")
+        print.Value('  병합 완료', len(result) , '항목',path)
         
         return result
 

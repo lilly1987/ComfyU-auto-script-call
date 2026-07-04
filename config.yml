@@ -1,10 +1,10 @@
 # --- 경로 설정 ---
 dataPath: Y:\ComfyU-auto-script_data  # 설정파일 폴더. 변경시 재실행 필요.
-base_dir: W:\ComfyUI_windows_portable2  # 작업 디렉토리
+base_dir: Y:\ComfyUI_windows_portable2  # 작업 디렉토리
 
 # --- 처리할 타입 리스트 ---
 CheckpointTypes: # Checkpoint 및 Lora 종류. 뒤의 숫자는 사용할 가중치. 키 추가시 재실행 필요. 가중치는 실시간 반영
-  IL: 2
+  IL: 1
   Anime: 1
   # Pony: 1
 
