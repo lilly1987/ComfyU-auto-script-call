@@ -196,7 +196,7 @@ def pop_nested(d: Dict, *keys, default: Any = None) -> Any:
     return default
 
 
-def update_dict(d: Dict, u: Dict,msg=None) -> Dict:
+def update_dict(d: Dict, u: Dict, msg=None) -> Dict:
     """
     딕셔너리를 재귀적으로 업데이트합니다.
     
@@ -210,7 +210,7 @@ def update_dict(d: Dict, u: Dict,msg=None) -> Dict:
     """
     if u is None:
         if msg: print.Warn("업데이트할 딕셔너리가 None입니다.",msg)        
-        return d
+        return d 
     
     if not isinstance(u, dict):
         raise ValueError(f"업데이트할 객체는 딕셔너리여야 합니다.", u)
@@ -218,14 +218,14 @@ def update_dict(d: Dict, u: Dict,msg=None) -> Dict:
     
     for k, v in u.items():
         if isinstance(v, collections.abc.Mapping):
-            d[k] = update_dict(d.get(k, {}), v)
+            d[k] = update_dict(d.get(k, {}), v,msg)
         else:
             d[k] = v
     
     return d
 
 
-def update_dict_key(d: Dict, u: Dict, key: str) -> Dict:
+def update_dict_key(d: Dict, u: Dict, key: str, msg=None) -> Dict:
     """
     딕셔너리에서 특정 키를 업데이트합니다.
     
@@ -245,7 +245,7 @@ def update_dict_key(d: Dict, u: Dict, key: str) -> Dict:
     
     if key in u:
         if key in d and isinstance(d[key], dict) and isinstance(u[key], dict):
-            update_dict(d[key], u[key])
+            update_dict(d[key], u[key],msg)
         else:
             d[key] = u[key]
     

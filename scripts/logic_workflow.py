@@ -27,7 +27,8 @@ class WorkflowMixin:
         if dic:
             for key in ['positive', 'negative']:
                 target = self.positive_dics if key == 'positive' else self.negative_dics
-                update_dict(target.setdefault(num_name, {}), dic.get(key),msg=msg)
+                if dic.get(key):
+                    update_dict(target.setdefault(num_name, {}), dic.get(key),msg=msg)
 
     def apply_workflow_settings(self, node: str, keys: List[str], value_func=None, random_func=random_min_max):
         """워크플로우 노드에 설정값과 랜덤 가중치를 일괄 적용합니다."""
@@ -139,9 +140,9 @@ class WorkflowMixin:
             h_model_conn = ['ModelSamplingDiscrete', 0] if isinstance(dic_cp.get('ModelSamplingDiscrete'), dict) else self.get_workflow('ModelSamplingDiscrete', 'model')
             # print.Info(f"h_model_conn", isinstance(dic_cp.get('ModelSamplingDiscrete'), dict))
             # print.Info(f"h_model_conn", self.get_workflow(next_key, 'model'))
-            print.Info(f"h_model_conn", h_model_conn)
+            # print.Info(f"h_model_conn", h_model_conn)
             h_clip_conn = ['CLIPSetLastLayer', 0] if isinstance(dic_cp.get('CLIPSetLastLayer'), dict) else self.get_workflow('CLIPSetLastLayer', 'clip')
-            print.Info(f"h_clip_conn", h_clip_conn)
+            # print.Info(f"h_clip_conn", h_clip_conn)
         
         self.IsStyleLora, self.IsDressLora = False, False
 
@@ -211,7 +212,7 @@ class WorkflowMixin:
             p_dic = self.positive_dics.get(k)
             n_dic = self.negative_dics.get(k)
             if p_dic:
-                print.Config(k, p_dic)
+                # print.Config(k, p_dic)
                 update_dict(pos_f, p_dic)
             if n_dic:
                 update_dict(neg_f, n_dic)
