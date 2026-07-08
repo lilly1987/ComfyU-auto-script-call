@@ -268,12 +268,26 @@ class WorkflowMixin:
             self.prefix = f"{self.checkpoint_type}/{self.checkpoint_name}/{self.char_name}/{self.checkpoint_name}-{self.char_name}-{ts}-{self.total}"
             self.prefix_name = f"{self.checkpoint_name}-{self.char_name}-{ts}-{self.total}"
         else:
-            tcp = '=' if self.yml_checkpoint.get('skip') not in (False, None) else '+'
-            pfv = '#' if self.yml_checkpoint.get('favorites') not in (False, None) else tcp
-            
-            tch = '=' if not self.no_char and self.get_now('dicLoraYml', self.char_name, default={}).get('skip') not in (False, None) else '+'
-            tfv = '#' if not self.no_char and self.get_now('dicLoraYml', self.char_name, default={}).get('favorites') not in (False, None) else tch
-            
+            if self.yml_checkpoint.get('favorites') not in (False, None, 0):
+                pfv='#'
+            elif self.yml_checkpoint.get('skip') == 'auto':
+                pfv='@'
+            elif self.yml_checkpoint.get('skip') not in (False, None, 0):
+                pfv='='
+            else:
+                pfv='+'
+
+            if self.no_char :
+                tfv='%'
+            elif self.get_now('dicLoraYml', self.char_name, default={}).get('favorites') not in (False, None, 0):
+                tfv='#'
+            elif self.get_now('dicLoraYml', self.char_name, default={}).get('skip') == 'auto':
+                tfv='@'
+            elif self.get_now('dicLoraYml', self.char_name, default={}).get('skip') not in (False, None, 0):
+                tfv='='
+            else:
+                tfv='+'
+
             cpw = self.yml_checkpoint.get('weight', '')
 
             chw = self.get_now('dicLoraYml', self.char_name, default={}).get('weight', '') if not self.no_char else ''

@@ -39,8 +39,8 @@ GetCheckpointKind:
     Cycle: 1
     Skip: 1
     Skip_Weight: 2
-    Favorites: 3
-    Favorites_Weight: 3
+    Favorites: 2
+    Favorites_Weight: 2
     fromImg: 1
 
 fromImgPath: 'Y:\photo\_2d\'
@@ -71,8 +71,8 @@ GetCharKind:
     Cycle: 1
     Skip: 1
     Skip_Weight: 2
-    Favorites: 3
-    Favorites_Weight: 3
+    Favorites: 2
+    Favorites_Weight: 2
 
 CharDbWeightMax: 9 # GetCharKind 에서 DB일 경우 최대 가중치
 CharDbWeightMin: 1 # GetCharKind 에서 DB일 경우 최소 가중치
