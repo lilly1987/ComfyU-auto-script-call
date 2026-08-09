@@ -1,5 +1,4 @@
-,#,,,
-,,fdgh-*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """
 공통 상수 정의
 - config.yml 키와 type_dics 내부 키를 하드코딩 문자열 대신 상수로 관리합니다.
