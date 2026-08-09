@@ -114,6 +114,8 @@ class LoopMixin:
         print(f"{self.total} {self.checkpoint_loop_cnt}/{self.checkpoint_loop} "
               f"{self.char_loop_cnt}/{self.char_loop} {self.queue_loop_cnt}/{self.queue_loop} "
               f"{elapsed} {self.checkpoint_type} {self.checkpoint_name} {self.char_name}")
+
+        time.sleep(random_min_max(self.get_config("sleep", 1)))
         
         # print("before _queue()")
         # 5. ComfyUI 전송
@@ -135,7 +137,6 @@ class LoopMixin:
         #         self.checkpoint_kind = 'Weight'
         #     return
         
-        time.sleep(random_min_max(self.get_config("sleep", 1)))
         
         # 6. 카운터 업데이트 및 루프 전이
         self.queue_loop_cnt += 1
