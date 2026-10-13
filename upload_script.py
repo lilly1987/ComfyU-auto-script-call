@@ -23,20 +23,19 @@ tasks = [
 def get_rate_limit_wait(error):
     """
     Rate Limit 오류 메시지에서 대기 시간을 초 단위로 추출합니다.
-    예: 'You can retry this action in 28 minutes'
+    지원 예시:
+    - You can retry this action in 28 minutes
+    - You can retry this action in about 1 hour
+    - You can retry this action in about 1 hour and 30 minutes
+    - You can retry this action in 30 seconds
     """
     message = str(error)
 
-    # Rate Limit 오류인지 확인
     if not re.search(r"rate limit|too many requests", message, re.I):
         return None
 
-    # 분, 초 단위 대기 시간 추출
     match = re.search(
-        r"retry this action in\s+"
-        r"(?:(\d+)\s*hours?)?\s*"
-        r"(?:(\d+)\s*minutes?)?\s*"
-        r"(?:(\d+)\s*seconds?)?",
+        r"retry this action in\s+(?:about\s+)?(.+?)(?:[.!]|$)",
         message,
         re.I
     )
@@ -44,13 +43,27 @@ def get_rate_limit_wait(error):
     if not match:
         return None
 
-    hours = int(match.group(1) or 0)
-    minutes = int(match.group(2) or 0)
-    seconds = int(match.group(3) or 0)
+    duration = match.group(1).lower()
+    total_seconds = 0
 
-    wait_seconds = hours * 3600 + minutes * 60 + seconds
+    units = {
+        "hour": 3600,
+        "minute": 60,
+        "second": 1
+    }
 
-    return wait_seconds if wait_seconds > 0 else None
+    found = False
+
+    for unit, multiplier in units.items():
+        pattern = rf"(\d+)\s*{unit}s?"
+        for number in re.findall(pattern, duration):
+            total_seconds += int(number) * multiplier
+            found = True
+
+    if found and total_seconds > 0:
+        return total_seconds
+
+    return None
 
 
 # 3. 레포지토리에 이미 존재하는 파일 목록 가져오기
