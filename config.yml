@@ -79,7 +79,7 @@ CharDbWeightMin: 1 # GetCharKind 에서 DB일 경우 최소 가중치
 
 CharWildcard: # Char 파일을 안쓸 경우 Wildcard 설정
   positive:
-    char: '/**/{__danbooru_female_character_my__|__danbooru_female_character_my_simple__},/**/'
+    char: ' {__danbooru_female_character_my__|__danbooru_female_character_my_simple__}, '
   negative:
     char: ''
 
@@ -93,13 +93,13 @@ GetLoraKind:
 
 LoraWildcard: # GetLoraKind 에서 Wildcard 경우
   positive:
-    action_set: '/**/{__action_set/action_set__| , },/**/'
+    action_set: ' {__action_set/action_set__| , }, '
   negative:
     action_set: ''
 
 # LoraWildcardEtc: # DB Random Cycle
   # positive:
-    # Wildcard: '/**/__action__,/**/'
+    # Wildcard: ' __action__, '
   # negative:
     # Wildcard: ''
 
