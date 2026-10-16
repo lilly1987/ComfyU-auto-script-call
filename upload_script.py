@@ -17,6 +17,14 @@ tasks = [
         "local_dir": r"D:\models\loras\Anime\etc",
         "repo_dir": "Anime/etc"
     },
+    {
+        "local_dir": r"D:\models\loras\Anime\char",
+        "repo_dir": "Anime/char"
+    },
+    {
+        "local_dir": r"D:\models\loras\IL\char",
+        "repo_dir": "IL/char"
+    },
 ]
 
 
