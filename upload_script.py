@@ -10,19 +10,19 @@ api = HfApi()
 # 2. 업로드할 로컬 폴더와 허깅페이스 대상 경로 매핑
 tasks = [
     {
-        "local_dir": r"D:\models\loras\IL\etc",
+        "local_dir": r"V:\loras\IL\etc",
         "repo_dir": "IL/etc"
     },
     {
-        "local_dir": r"D:\models\loras\Anime\etc",
+        "local_dir": r"V:\loras\Anime\etc",
         "repo_dir": "Anime/etc"
     },
     {
-        "local_dir": r"D:\models\loras\Anime\char",
+        "local_dir": r"Z:\Anime\char",
         "repo_dir": "Anime/char"
     },
     {
-        "local_dir": r"D:\models\loras\IL\char",
+        "local_dir": r"Z:\IL\char",
         "repo_dir": "IL/char"
     },
 ]
